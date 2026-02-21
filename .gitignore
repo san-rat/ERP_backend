@@ -1,0 +1,24 @@
+# Build folders
+**/bin/
+**/obj/
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+
+# User-specific files
+*.user
+*.suo
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# GitHub Actions artifacts
+*.trx
+
+# Docker
+docker-compose.override.yml
