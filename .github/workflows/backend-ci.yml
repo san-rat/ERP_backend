@@ -31,3 +31,7 @@ jobs:
       - name: Build solution
         run: dotnet build ERP_Backend.slnx --no-restore --configuration Release
         
+      - name: Docker Build AuthService
+        run: docker build -t authservice:ci -f src/AuthService/Dockerfile src/AuthService
+
+    
