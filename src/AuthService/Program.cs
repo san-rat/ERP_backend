@@ -8,7 +8,7 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.MapGet("/health", () => Results.Ok("AuthService is running - and sanuk is testing."));
+app.MapGet("/health", () => Results.Ok("AuthService is running - and sanuk is testing - dulain is watching."));
 
 app.MapPost("/login", (LoginRequest request) =>
 {
