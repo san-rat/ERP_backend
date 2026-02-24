@@ -23,7 +23,7 @@ jobs:
           MYSQL_USER: ${{ secrets.AZ_MYSQL_MIGRATOR_USER }}
           MYSQL_PASSWORD: ${{ secrets.AZ_MYSQL_MIGRATOR_PASSWORD }}
         run: |
-          bash ./scripts/apply-migrations.sh db/auth/migrations
+          bash ./scripts/apply_migrations.sh db/auth/migrations
 
       - name: Docker login to ACR
         run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
