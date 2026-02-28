@@ -2,47 +2,40 @@ using AuthService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ─── Token Revocation (singleton = lives for the lifetime of the process) ───
-builder.Services.AddSingleton<TokenRevocationService>();
+// ── JWT settings ──────────────────────────────────────────────────────────────
+// Env var JWT_SECRET takes precedence; appsettings is the fallback.
+var jwtSecret   = Environment.GetEnvironmentVariable("JWT_SECRET")
+                  ?? builder.Configuration["JwtSettings:SecretKey"]
+                  ?? throw new InvalidOperationException("JwtSettings:SecretKey is not configured.");
 
-// ─── JWT Authentication ───────────────────────────────────────────────────────
-var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "your_super_secret_key_must_be_32_chars!!";
+var jwtIssuer   = builder.Configuration["JwtSettings:Issuer"]   ?? "InsightERP";
+var jwtAudience = builder.Configuration["JwtSettings:Audience"]  ?? "InsightERP-Users";
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+// ── Services ──────────────────────────────────────────────────────────────────
+builder.Services.AddScoped<JwtTokenService>();
+
+// ── JWT Bearer authentication ─────────────────────────────────────────────────
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = false,
-            ValidateAudience = false,
-            ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
-        };
+            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
 
-        // Custom revocation check: reject tokens whose JTI is no longer the active one
-        options.Events = new JwtBearerEvents
-        {
-            OnTokenValidated = context =>
-            {
-                var revocation = context.HttpContext.RequestServices
-                    .GetRequiredService<TokenRevocationService>();
+            ValidateIssuer           = true,
+            ValidIssuer              = jwtIssuer,
 
-                var username = context.Principal?.Identity?.Name;
-                var jti = context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+            ValidateAudience         = true,
+            ValidAudience            = jwtAudience,
 
-                if (username == null || jti == null || !revocation.IsTokenActive(username, jti))
-                {
-                    context.Fail("Token has been revoked — please log in again.");
-                }
-
-                return Task.CompletedTask;
-            }
+            ValidateLifetime         = true,
+            ClockSkew                = TimeSpan.Zero   // no grace period
         };
     });
 
@@ -50,18 +43,23 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// ─── Swagger with JWT Authorize button ───────────────────────────────────────
+// ── Swagger with JWT "Authorize" button ───────────────────────────────────────
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "AuthService API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title       = "InsightERP – Authentication Service",
+        Version     = "v1",
+        Description = "Issues JWT tokens on successful registration or login."
+    });
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Paste your JWT token below (without the 'Bearer ' prefix — Swagger adds it automatically).",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
+        Description  = "Paste your JWT token (without the 'Bearer ' prefix — Swagger adds it).",
+        Name         = "Authorization",
+        In           = ParameterLocation.Header,
+        Type         = SecuritySchemeType.Http,
+        Scheme       = "bearer",
         BearerFormat = "JWT"
     });
 
@@ -70,24 +68,30 @@ builder.Services.AddSwaggerGen(c =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id   = "Bearer"
+                }
             },
             Array.Empty<string>()
         }
     });
 });
 
-// ─── Pipeline ─────────────────────────────────────────────────────────────────
+// ── Pipeline ──────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "InsightERP AuthService v1");
+    c.RoutePrefix = "swagger";
+});
 
-app.UseAuthentication();   // must come BEFORE UseAuthorization
+app.UseAuthentication();   // MUST come before UseAuthorization
 app.UseAuthorization();
 
 app.MapControllers();
-
-Console.WriteLine("AuthDb Conn = " + (builder.Configuration.GetConnectionString("AuthDb") ?? "<null>"));
 
 app.Run();
