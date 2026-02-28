@@ -1,6 +1,96 @@
 @AuthService_HostAddress = http://localhost:5288
-
-GET {{AuthService_HostAddress}}/weatherforecast/
-Accept: application/json
-
+@gateway = http://localhost:5279
 ###
+// Check health without JWT token
+GET {{AuthService_HostAddress}}/health
+Accept: application/json
+###
+# @name loginA
+POST {{AuthService_HostAddress}}/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "password"
+}
+
+HTTP/1.1 200  - OK
+connection: close
+content-type: application/json; charset=utf-8
+date: Fri, 27 Feb 2026 18:33:51 GMT
+server: Kestrel
+transfer-encoding: chunked
+###
+// Check db without JWT token
+GET {{AuthService_HostAddress}}/db-check
+
+HTTP/1.1 401  - Unauthorized
+content-length: 0
+connection: close
+date: Fri, 27 Feb 2026 18:34:04 GMT
+server: Kestrel
+www-authenticate: Bearer
+###
+// Check db with valid JWT token 
+GET {{AuthService_HostAddress}}/db-check
+Authorization: Bearer {token}
+
+HTTP/1.1 200  - OK
+connection: close
+content-type: application/json; charset=utf-8
+date: Fri, 27 Feb 2026 18:34:17 GMT
+server: Kestrel
+transfer-encoding: chunked
+###
+// Check db with invalid JWT token 
+GET {{AuthService_HostAddress}}/db-check
+Authorization: Bearer {token}
+###
+# @name loginB
+POST {{AuthService_HostAddress}}/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "password"
+}
+
+HTTP/1.1 200  - OK
+connection: close
+content-type: application/json; charset=utf-8
+date: Fri, 27 Feb 2026 18:34:31 GMT
+server: Kestrel
+transfer-encoding: chunked
+###
+//Check db with newly genarted JWT 
+GET {{AuthService_HostAddress}}/db-check
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiYWRtaW4iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBRE1JTiIsImp0aSI6Ijc5YWUwMzM4LWM2ZjktNDY2Yi1iODlmLTAyYzRjNmIxYmZjMiIsImV4cCI6MTc3MjIyMDg3MX0.z1WWXELhgf38P3gG1MIp5-yyHz7ROmsP7so0uFdkqPg
+
+HTTP/1.1 200  - OK
+connection: close
+content-type: application/json; charset=utf-8
+date: Fri, 27 Feb 2026 18:35:07 GMT
+server: Kestrel
+transfer-encoding: chunked
+###
+// db-check with Token A after login with Token B
+GET {{AuthService_HostAddress}}/db-check
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiYWRtaW4iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBRE1JTiIsImp0aSI6Ijc5YWUwMzM4LWM2ZjktNDY2Yi1iODlmLTAyYzRjNmIxYmZjMiIsImV4cCI6MTc3MjIyMDg3MX0.z1WWXELhgf38P3gG1MIp5-yyHz7ROmsP7so0uFdkqPg
+
+HTTP/1.1 200  - OK
+connection: close
+content-type: application/json; charset=utf-8
+date: Fri, 27 Feb 2026 18:35:22 GMT
+server: Kestrel
+transfer-encoding: chunked
+###
+GET {{gateway}}/auth/db-check
+
+HTTP/1.1 401  - Unauthorized
+content-length: 0
+connection: close
+date: Fri, 27 Feb 2026 18:40:05 GMT
+server: Kestrel
+###
+GET {{gateway}}/auth/db-check
+Authorization: Bearer {token}
