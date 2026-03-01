@@ -1,6 +1,43 @@
 @ApiGateway_HostAddress = http://localhost:5279
 
-GET {{ApiGateway_HostAddress}}/weatherforecast/
+###
+# Gateway — self health check
+GET {{ApiGateway_HostAddress}}/health
+Accept: application/json
+
+###
+# Proxy — AuthService health (no token)
+GET {{ApiGateway_HostAddress}}/auth/health
+Accept: application/json
+
+###
+# Proxy — CustomerService health (no token)
+GET {{ApiGateway_HostAddress}}/customer/health
+Accept: application/json
+
+###
+# Proxy — OrderService health (no token)
+GET {{ApiGateway_HostAddress}}/order/health
+Accept: application/json
+
+###
+# Proxy — ProductService health (no token)
+GET {{ApiGateway_HostAddress}}/product/health
+Accept: application/json
+
+###
+# Proxy — ForecastService health (no token)
+GET {{ApiGateway_HostAddress}}/forecast/health
+Accept: application/json
+
+###
+# Proxy — PredictionService health (no token)
+GET {{ApiGateway_HostAddress}}/prediction/health
+Accept: application/json
+
+###
+# Proxy — AnalyticsService health (no token)
+GET {{ApiGateway_HostAddress}}/analytics/health
 Accept: application/json
 
 ###

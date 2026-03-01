@@ -1,8 +1,13 @@
-@AuthService_HostAddress = http://localhost:5288
+@AuthService_HostAddress = http://localhost:5001
 @gateway = http://localhost:5279
+
 ###
 // Check health without JWT token
 GET {{AuthService_HostAddress}}/health
+Accept: application/json
+###
+// Check health via Gateway (no token)
+GET {{gateway}}/auth/health
 Accept: application/json
 ###
 # @name loginA
