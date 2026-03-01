@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace OrderService.Controllers;
+namespace AnalyticsService.Controllers;
 
 [ApiController]
 [Route("")]
@@ -8,5 +8,5 @@ public class HealthController : ControllerBase
 {
     [HttpGet("health")]
     public IActionResult Health()
-        => Ok("OrderService is running.");
+        => Ok("AnalyticsService is running.");
 }
