@@ -1,25 +1,109 @@
 # Project Progress Summary
 
+---
+
 ### 1) Repository & Docs Structure
 - Created a clean repository structure for documentation and future services.
 - Added `/docs` folder and stored the SRS PDF.
 - Added a root `README.md` to describe the backend.
+- Added `.github/pull_request_template.md` for standardised PRs.
 
-### 2) First Microservice: AuthService (Minimal)
+---
+
+### 2) First Microservice: AuthService
 - Created the first backend microservice: `src/AuthService`
 - Implemented minimal endpoints:
-  - `GET /health` (service health check)
-  - `POST /login` (basic login endpoint for future integration)
+  - `GET /health` — service health check
+  - `POST /login` — basic login endpoint (placeholder JWT, to be replaced)
 - Enabled Swagger UI for API testing.
+- Packages: `Swashbuckle.AspNetCore 6.9.0`, `Microsoft.AspNetCore.Authentication.JwtBearer 9.0.2`, `MySql.Data 9.6.0`
+- Local port: `http://localhost:5288`
+
+---
 
 ### 3) CI Pipeline (GitHub Actions)
-A GitHub Actions workflow is set up to run on every push / pull request to `main` and `dev`:
+A GitHub Actions workflow (`backend-ci.yml`) is set up to run on every push/pull request to `main` and `dev`:
 - Verifies required repo structure (README + docs folder)
 - Restores .NET dependencies
 - Builds the backend solution (`ERP_Backend.slnx`)
 - Builds the Docker image for AuthService (validates containerization)
 
-This ensures the project always builds successfully and the Dockerfile remains valid.
+A CD pipeline (`cd-dev.yml`) is also present for deployment automation.
+
+---
+
+### 4) CustomerService Microservice
+- Created `src/CustomerService` with the standard microservice baseline framework:
+  - `GET /health` — health check endpoint
+  - Swagger UI enabled
+  - Dockerised with multi-stage build (port `8080`)
+- Fixed a `Microsoft.OpenApi` version conflict — downgraded `Swashbuckle.AspNetCore` from `10.1.4` → `6.9.0` and removed `Microsoft.AspNetCore.OpenApi 9.0.13`.
+- Folder structure: `Controller/`, `Models/`, `Services/`, `Common/`
+- Local port: `http://localhost:5071`
+
+---
+
+### 5) OrderService Microservice
+- Created `src/OrderService` with the standard microservice baseline framework:
+  - `GET /health` — health check endpoint
+  - Swagger UI enabled
+  - Dockerised with multi-stage build (port `8080`)
+- Fixed the same `Microsoft.OpenApi` package conflict as CustomerService.
+- Fixed Dockerfile copy-paste errors (was referencing `CustomerService` files).
+- Fixed `Program.cs` — replaced default WeatherForecast scaffolding with clean controller setup.
+- Folder structure: `Controller/`, `Models/`, `Services/`, `Common/`
+- Local port: `http://localhost:5113`
+
+---
+
+### 6) ProductService Microservice
+- Created `src/ProductService` with the standard microservice baseline framework:
+  - `GET /health` — health check endpoint
+  - Swagger UI enabled
+  - Dockerised with multi-stage build (port `8080`)
+- Fixed the same `Microsoft.OpenApi` package conflict.
+- Fixed Dockerfile copy-paste errors (was referencing `OrderService` files).
+- Fixed `Program.cs` — replaced default WeatherForecast scaffolding with clean controller setup.
+- Folder structure: `Controller/`, `Models/`, `Services/`, `Common/`
+- Local port: `http://localhost:5038`
+
+---
+
+### 7) AnalyticsService, ForecastService & PredictionService Microservices
+- Created all three services with the standard microservice baseline framework:
+  - `GET /health` — health check endpoint per service
+  - Swagger UI enabled on each
+  - Dockerised with multi-stage build (port `8080`)
+- Fixed `Microsoft.OpenApi` package conflict on all three.
+- Fixed Dockerfile copy-paste errors on all three (were all referencing `ProductService` files).
+- Fixed `Program.cs` on all three — replaced WeatherForecast scaffolding with clean controller setup.
+- Folder structure (each): `Controller/`, `Models/`, `Services/`, `Common/`
+- Local ports:
+  - AnalyticsService: `http://localhost:5199`
+  - ForecastService: `http://localhost:5044`
+  - PredictionService: `http://localhost:5197`
+
+---
+
+### 8) API Gateway
+- `src/ApiGateway` exists as a service skeleton.
+- Local port: `http://localhost:5279` / `https://localhost:7126`
+
+---
+
+### 9) Docker Compose (Local Dev Database)
+- `docker-compose.yml` at repo root spins up a local MySQL 8.0 instance:
+  - Container name: `erp-mysql-local`
+  - External port: `3307` → internal `3306`
+  - Database: `auth_db`, User: `auth_user`
+
+---
+
+### 10) Documentation
+- `docs/SRS/` — System Requirements Specification PDF
+- `docs/micro_archi_structure_guide/micro_archi.md` — Microservice architecture guide with all port numbers, responsibilities, and architecture diagram
+- `docs/contribution_doc/` — Contribution guidelines
+- `docs/security/` — Security documentation
 
 ---
 
@@ -27,96 +111,78 @@ This ensures the project always builds successfully and the Dockerfile remains v
 
 ```text
 ERP_backend/
-├── .github/workflows/ # GitHub Actions CI pipeline
-├── docs/              # Documentation (SRS, epics, research)
-│   └── SRS/SRS.pdf
+├── .github/
+│   ├── workflows/
+│   │   ├── backend-ci.yml        # CI pipeline (build + Docker validate)
+│   │   └── cd-dev.yml            # CD pipeline
+│   └── pull_request_template.md
+├── docs/
+│   ├── SRS/SRS.pdf
+│   ├── micro_archi_structure_guide/micro_archi.md
+│   ├── contribution_doc/
+│   └── security/
 ├── src/
-│   └── AuthService/   # First microservice
-│       ├── Program.cs
-│       ├── AuthService.csproj
-│       ├── Dockerfile
-│       └── ...
-├── ERP_Backend.slnx   # Solution file (contains services)
+│   ├── ApiGateway/               # API Gateway skeleton   :5279
+│   ├── AuthService/              # Auth + JWT             :5288
+│   ├── CustomerService/          # Customer management    :5071
+│   ├── OrderService/             # Order lifecycle        :5113
+│   ├── ProductService/           # Product catalog        :5038
+│   ├── AnalyticsService/         # Business analytics     :5199
+│   ├── ForecastService/          # Demand forecasting     :5044
+│   └── PredictionService/        # ML predictions         :5197
+├── db/
+├── scripts/
+├── tests/
+├── docker-compose.yml            # Local MySQL dev DB
+├── ERP_Backend.slnx              # Solution file
 └── README.md
 ```
 
 ---
 
-## ▶️ How To Run AuthService Locally (Step-by-Step)
+## � Service Port Reference
 
-### A) Run using .NET (recommended for development)
-From the repository root:
-
-1.  **Restore dependencies:**
-    ```bash
-    dotnet restore ERP_Backend.slnx
-    ```
-
-2.  **Run the AuthService:**
-    ```bash
-    dotnet run --project src/AuthService
-    ```
-
-3.  **Open Swagger UI:**
-    - **Swagger:** `http://localhost:<PORT>/swagger`
-    - **Health check:** `GET http://localhost:<PORT>/health`
-    *(The port is shown in the terminal output when you run the service.)*
-
-### B) Run using Docker (when Docker Desktop is available)
-From the repository root:
-
-1.  **Build the Docker image:**
-    ```bash
-    docker build -t authservice:local -f src/AuthService/Dockerfile src/AuthService
-    ```
-
-2.  **Run the container:**
-    ```bash
-    docker run --rm -p 8080:8080 authservice:local
-    ```
-
-3.  **Test:**
-    - **Swagger:** `http://localhost:8080/swagger`
-    - **Health check:** `GET http://localhost:8080/health`
+| Service | Local HTTP | Local HTTPS | Container |
+|---|---|---|---|
+| ApiGateway | `5279` | `7126` | `8080` |
+| AuthService | `5288` | `7009` | `8080` |
+| CustomerService | `5071` | — | `8080` |
+| OrderService | `5113` | — | `8080` |
+| ProductService | `5038` | — | `8080` |
+| AnalyticsService | `5199` | — | `8080` |
+| ForecastService | `5044` | — | `8080` |
+| PredictionService | `5197` | — | `8080` |
 
 ---
 
-## 🔌 API Endpoints (AuthService)
+## ▶️ How To Run A Service Locally
 
-### 1) Health Check
-- **Endpoint:** `GET /health`
-- **Description:** Returns a simple OK response to confirm the service is running.
+### Run using .NET
+```bash
+cd src/<ServiceName>
+dotnet run
+```
+Then open `http://localhost:<PORT>/swagger`
 
-### 2) Login
-- **Endpoint:** `POST /login`
-- **Request body example:**
-    ```json
-    {
-      "username": "admin",
-      "password": "password"
-    }
-    ```
-- **Description:** Success response includes a placeholder token (will be replaced with JWT later).
+### Run using Docker
+```bash
+cd src/<ServiceName>
+docker build -t <service-name> .
+docker run -p 5000:8080 <service-name>
+```
+Then open `http://localhost:5000/swagger`
 
----
-
-## 🔄 CI Workflow Summary (GitHub Actions)
-The CI workflow runs automatically on:
-- Push to `main` or `dev`
-- Pull requests targeting `main` or `dev`
-
-**CI steps:**
-1.  **Checkout repository**
-2.  **Verify structure** (README + docs)
-3.  **Setup .NET** (v10.x)
-4.  **Restore dependencies**
-5.  **Build solution**
-6.  **Docker build** AuthService
+### Run local database (MySQL)
+```bash
+docker-compose up -d
+```
 
 ---
 
 ## 🚧 Next Planned Steps
 - Add Azure Container Registry (ACR)
 - Push Docker images to ACR via CD pipeline
-- Deploy AuthService to Azure Container Apps
-- Add API Gateway service (Gateway) and connect services
+- Deploy services to Azure Container Apps
+- Implement JWT validation in AuthService
+- Connect services through the API Gateway
+- Add database connections per service
