@@ -20,10 +20,10 @@ jobs:
           test -d docs
           echo "Project structure is valid"
 
-      - name: Setup .NET 10
+      - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: '9.0.x'
 
       - name: Restore dependencies
         run: dotnet restore ERP_Backend.slnx
