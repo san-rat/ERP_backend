@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 
@@ -15,13 +16,16 @@ public class HealthController : ControllerBase
         _config = config;
     }
 
+    [AllowAnonymous]
     [HttpGet("health")]
     public IActionResult Health()
     {
         return Ok("AuthService is running - and sanuk is testing - dulain is watching.");
     }
 
+    [Authorize]
     [HttpGet("db-check")]
+
     public async Task<IActionResult> DbCheck()
     {
         var cs = _config.GetConnectionString("AuthDb") ?? "";

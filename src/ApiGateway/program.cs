@@ -2,12 +2,15 @@ using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
 using Serilog;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using System.Text;
 
-var builder = WebApplication.CreateBuilder(args);
+// Make OpenApi model types available without qualification
 
-// ── Serilog ──────────────────────────────────────────────────────────────────
+
+// ── Serilog bootstrap logger ──────────────────────────────────────────────────
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .Enrich.FromLogContext()
@@ -15,67 +18,100 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.File("logs/api-gateway-.txt", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
-builder.Host.UseSerilog();
-
 try
 {
     Log.Information("========== InsightERP API Gateway Starting ==========");
 
+    var builder = WebApplication.CreateBuilder(args);
+
+    builder.Host.UseSerilog();
+
     // ── Configuration ─────────────────────────────────────────────────────────
     builder.Configuration
         .SetBasePath(builder.Environment.ContentRootPath)
-        .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
-        .AddJsonFile("ocelot.json", optional: false, reloadOnChange: true)
+        .AddJsonFile("appsettings.json",                                          optional: false, reloadOnChange: true)
+        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json",   optional: true)
+        .AddJsonFile("ocelot.json",                                               optional: false, reloadOnChange: true)
         .AddEnvironmentVariables();
 
-    // ── Ocelot (no Polly, no Consul — pure static routing) ───────────────────
-    builder.Services.AddOcelot(builder.Configuration);
+    // ── JWT settings ──────────────────────────────────────────────────────────
+    // Env var JWT_SECRET takes precedence; appsettings is the fallback.
+    var jwtSecret   = Environment.GetEnvironmentVariable("JWT_SECRET")
+                      ?? builder.Configuration["JwtSettings:SecretKey"]
+                      ?? throw new InvalidOperationException("JwtSettings:SecretKey is not configured.");
 
-    // ── JWT ───────────────────────────────────────────────────────────────────
-    var secretKey = builder.Configuration["JwtSettings:SecretKey"]
-        ?? "your-super-secret-key-change-this-in-production-at-least-32-characters-long";
+    var jwtIssuer   = builder.Configuration["JwtSettings:Issuer"]   ?? "InsightERP";
+    var jwtAudience = builder.Configuration["JwtSettings:Audience"]  ?? "InsightERP-Users";
 
+    // ── JWT Bearer — validates tokens produced by AuthService ─────────────────
     builder.Services
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer("Bearer", options =>
         {
-            options.RequireHttpsMetadata = false;
-            options.SaveToken = true;
+            options.RequireHttpsMetadata = false;   // set true in production with TLS
+            options.SaveToken            = true;
+
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(secretKey)),
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateLifetime = true,
-                ClockSkew = TimeSpan.Zero
+                IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+
+                ValidateIssuer           = true,
+                ValidIssuer              = jwtIssuer,
+
+                ValidateAudience         = true,
+                ValidAudience            = jwtAudience,
+
+                ValidateLifetime         = true,
+                ClockSkew                = TimeSpan.Zero   // no grace period
             };
         });
 
-    // ── Swagger ───────────────────────────────────────────────────────────────
+    // Fallback policy: require authenticated user for every route that the
+    // Gateway controller maps — Ocelot routes are protected via ocelot.json.
+    builder.Services.AddAuthorization(options =>
+    {
+        options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+
+    // ── Ocelot (static routing, no Polly / Consul) ────────────────────────────
+    builder.Services.AddOcelot(builder.Configuration);
+
+    // ── Controllers (health endpoints live here) ──────────────────────────────
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
+
+    // ── Swagger ───────────────────────────────────────────────────────────────
     builder.Services.AddSwaggerGen(c =>
     {
-        c.SwaggerDoc("v1", new() { Title = "InsightERP API Gateway", Version = "v1" });
-        c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        c.SwaggerDoc("v1", new OpenApiInfo
         {
-            In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-            Name = "Authorization",
-            Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-            BearerFormat = "JWT",
-            Scheme = "Bearer"
+            Title       = "InsightERP API Gateway",
+            Version     = "v1",
+            Description = "Reverse proxy gateway. Authenticate via /api/auth/login first, then paste the token below."
         });
-        c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+
+        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Description  = "JWT Bearer token. Enter token only (no 'Bearer ' prefix needed — Swagger adds it).",
+            Name         = "Authorization",
+            In           = ParameterLocation.Header,
+            Type         = SecuritySchemeType.Http,
+            Scheme       = "bearer",
+            BearerFormat = "JWT"
+        });
+
+        c.AddSecurityRequirement(new OpenApiSecurityRequirement
         {
             {
-                new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                new OpenApiSecurityScheme
                 {
-                    Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                    Reference = new OpenApiReference
                     {
-                        Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                        Id = "Bearer"
+                        Type = ReferenceType.SecurityScheme,
+                        Id   = "Bearer"
                     }
                 },
                 Array.Empty<string>()
@@ -102,16 +138,22 @@ try
 
     app.UseRouting();
     app.UseCors("AllowAll");
-    app.UseAuthentication();
-    app.UseAuthorization();
+
+    app.UseAuthentication();   // JWT token validation
+    app.UseAuthorization();    // [AllowAnonymous] / [Authorize] enforcement
+
+    // Built-in ASP.NET Core health endpoint (no JWT required — mapped before Ocelot)
     app.MapHealthChecks("/health");
+
+    // Gateway controller endpoints (health/live/ready/info/routes/services)
     app.MapControllers();
 
-    // Ocelot MUST be last
+    // Ocelot MUST be registered LAST — it acts as a catch-all reverse proxy
     await app.UseOcelot();
 
     Log.Information("Gateway running  → http://localhost:5000");
     Log.Information("Swagger UI       → http://localhost:5000/swagger");
+    Log.Information("Health check     → http://localhost:5000/gateway/health");
 
     await app.RunAsync();
 }

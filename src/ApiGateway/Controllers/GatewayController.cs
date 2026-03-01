@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Reflection;
 
@@ -17,7 +18,8 @@ namespace ApiGateway.Controllers
             _logger = logger;
         }
 
-        /// <summary>Returns 200 OK when gateway is healthy.</summary>
+        /// <summary>Returns 200 OK when gateway is healthy. No JWT required.</summary>
+        [AllowAnonymous]
         [HttpGet("health")]
         [HttpHead("health")]
         public IActionResult Health()
@@ -34,7 +36,8 @@ namespace ApiGateway.Controllers
             });
         }
 
-        /// <summary>Returns gateway info, features and registered routes.</summary>
+        /// <summary>Returns gateway info, features and registered routes. No JWT required.</summary>
+        [AllowAnonymous]
         [HttpGet("info")]
         public IActionResult GetInfo()
         {
@@ -74,7 +77,8 @@ namespace ApiGateway.Controllers
             });
         }
 
-        /// <summary>Returns all statically registered downstream services.</summary>
+        /// <summary>Returns all statically registered downstream services. No JWT required.</summary>
+        [AllowAnonymous]
         [HttpGet("services")]
         public IActionResult GetServices()
         {
@@ -98,7 +102,8 @@ namespace ApiGateway.Controllers
             });
         }
 
-        /// <summary>Returns gateway route table.</summary>
+        /// <summary>Returns gateway route table. No JWT required.</summary>
+        [AllowAnonymous]
         [HttpGet("routes")]
         public IActionResult GetRoutes()
         {
@@ -124,13 +129,15 @@ namespace ApiGateway.Controllers
             });
         }
 
-        /// <summary>Kubernetes liveness probe.</summary>
+        /// <summary>Kubernetes liveness probe. No JWT required.</summary>
+        [AllowAnonymous]
         [HttpGet("live")]
         [HttpHead("live")]
         public IActionResult IsAlive() =>
             Ok(new { status = "alive", timestamp = DateTime.UtcNow });
 
-        /// <summary>Kubernetes readiness probe.</summary>
+        /// <summary>Kubernetes readiness probe. No JWT required.</summary>
+        [AllowAnonymous]
         [HttpGet("ready")]
         [HttpHead("ready")]
         public IActionResult IsReady() =>
