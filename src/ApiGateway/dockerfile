@@ -20,9 +20,11 @@ COPY --from=build /app/publish .
 
 RUN mkdir -p /app/logs
 
-EXPOSE 5000
+# Azure Container Apps expects the app to listen on 8080
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
-  CMD curl -f http://localhost:5000/gateway/health || exit 1
+  CMD curl -f http://localhost:8080/gateway/health || exit 1
 
 ENTRYPOINT ["dotnet", "ApiGateway.dll"]
