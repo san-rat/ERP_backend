@@ -1,4 +1,4 @@
-# Project Progress Summary
+# Project Progress Summary — InsightERP Backend
 
 ---
 
@@ -12,82 +12,77 @@
 
 ### 2) First Microservice: AuthService
 - Created the first backend microservice: `src/AuthService`
-- Implemented minimal endpoints:
+- Implemented endpoints:
   - `GET /health` — service health check
-  - `POST /login` — basic login endpoint (placeholder JWT, to be replaced)
+  - `GET /db-check` — database connectivity check (requires auth)
+  - `POST /api/auth/login` — login with username/password, returns JWT
+  - `POST /api/auth/register` — register new user, returns JWT
 - Enabled Swagger UI for API testing.
-- Packages: `Swashbuckle.AspNetCore 6.9.0`, `Microsoft.AspNetCore.Authentication.JwtBearer 9.0.2`, `MySql.Data 9.6.0`
-- Local port: `http://localhost:5288`
+- JWT token generation with SHA-256 password hashing.
+- Pre-seeded accounts: `admin/Admin@123`, `manager/Manager@123`, `employee/Employee@123`
+- Packages: `Swashbuckle.AspNetCore`, `Microsoft.AspNetCore.Authentication.JwtBearer`, `MySql.Data`
+- Local port: `http://localhost:5001`
 
 ---
 
 ### 3) CI Pipeline (GitHub Actions)
-A GitHub Actions workflow (`backend-ci.yml`) is set up to run on every push/pull request to `main` and `dev`:
-- Verifies required repo structure (README + docs folder)
+A GitHub Actions workflow (`.github/workflows/backend-ci.yml`) runs on every push/PR:
+- Verifies required repo structure
 - Restores .NET dependencies
-- Builds the backend solution (`ERP_Backend.slnx`)
-- Builds the Docker image for AuthService (validates containerization)
-
-A CD pipeline (`cd-dev.yml`) is also present for deployment automation.
+- Builds the full solution (`ERP_Backend.slnx`)
+- Runs all automated tests (`dotnet test`)
+- Builds Docker images for **all 8 services** (validates containerisation)
 
 ---
 
 ### 4) CustomerService Microservice
-- Created `src/CustomerService` with the standard microservice baseline framework:
+- Created `src/CustomerService` with the standard microservice baseline:
   - `GET /health` — health check endpoint
   - Swagger UI enabled
   - Dockerised with multi-stage build (port `8080`)
-- Fixed a `Microsoft.OpenApi` version conflict — downgraded `Swashbuckle.AspNetCore` from `10.1.4` → `6.9.0` and removed `Microsoft.AspNetCore.OpenApi 9.0.13`.
 - Folder structure: `Controller/`, `Models/`, `Services/`, `Common/`
-- Local port: `http://localhost:5071`
+- Local port: `http://localhost:5002`
 
 ---
 
 ### 5) OrderService Microservice
-- Created `src/OrderService` with the standard microservice baseline framework:
+- Created `src/OrderService`:
   - `GET /health` — health check endpoint
   - Swagger UI enabled
-  - Dockerised with multi-stage build (port `8080`)
-- Fixed the same `Microsoft.OpenApi` package conflict as CustomerService.
-- Fixed Dockerfile copy-paste errors (was referencing `CustomerService` files).
-- Fixed `Program.cs` — replaced default WeatherForecast scaffolding with clean controller setup.
+  - Dockerised (port `8080`)
 - Folder structure: `Controller/`, `Models/`, `Services/`, `Common/`
-- Local port: `http://localhost:5113`
+- Local port: `http://localhost:5003`
 
 ---
 
 ### 6) ProductService Microservice
-- Created `src/ProductService` with the standard microservice baseline framework:
+- Created `src/ProductService`:
   - `GET /health` — health check endpoint
   - Swagger UI enabled
-  - Dockerised with multi-stage build (port `8080`)
-- Fixed the same `Microsoft.OpenApi` package conflict.
-- Fixed Dockerfile copy-paste errors (was referencing `OrderService` files).
-- Fixed `Program.cs` — replaced default WeatherForecast scaffolding with clean controller setup.
+  - Dockerised (port `8080`)
 - Folder structure: `Controller/`, `Models/`, `Services/`, `Common/`
-- Local port: `http://localhost:5038`
+- Local port: `http://localhost:5004`
 
 ---
 
 ### 7) AnalyticsService, ForecastService & PredictionService Microservices
-- Created all three services with the standard microservice baseline framework:
-  - `GET /health` — health check endpoint per service
-  - Swagger UI enabled on each
-  - Dockerised with multi-stage build (port `8080`)
-- Fixed `Microsoft.OpenApi` package conflict on all three.
-- Fixed Dockerfile copy-paste errors on all three (were all referencing `ProductService` files).
-- Fixed `Program.cs` on all three — replaced WeatherForecast scaffolding with clean controller setup.
-- Folder structure (each): `Controller/`, `Models/`, `Services/`, `Common/`
+- Created all three services with the standard baseline:
+  - `GET /health` per service
+  - Swagger UI
+  - Dockerised (port `8080`)
 - Local ports:
-  - AnalyticsService: `http://localhost:5199`
-  - ForecastService: `http://localhost:5044`
-  - PredictionService: `http://localhost:5197`
+  - AnalyticsService: `http://localhost:5007`
+  - ForecastService: `http://localhost:5005`
+  - PredictionService: `http://localhost:5006`
 
 ---
 
 ### 8) API Gateway
-- `src/ApiGateway` exists as a service skeleton.
-- Local port: `http://localhost:5279` / `https://localhost:7126`
+- Fully implemented `src/ApiGateway` using **Ocelot** reverse proxy.
+- Routes all incoming frontend requests to the correct downstream service.
+- JWT validation built in — authenticated routes require a valid Bearer token.
+- Swagger UI available at `/swagger`.
+- Local port: `http://localhost:5000`
 
 ---
 
@@ -101,9 +96,91 @@ A CD pipeline (`cd-dev.yml`) is also present for deployment automation.
 
 ### 10) Documentation
 - `docs/SRS/` — System Requirements Specification PDF
-- `docs/micro_archi_structure_guide/micro_archi.md` — Microservice architecture guide with all port numbers, responsibilities, and architecture diagram
+- `docs/micro_archi_structure_guide/micro_archi.md` — Microservice architecture guide
+- `docs/micro_archi_structure_guide/structure_guide.md` — AuthService folder/file breakdown
 - `docs/contribution_doc/` — Contribution guidelines
 - `docs/security/` — Security documentation
+
+---
+
+### 11) DevOps Sprint 1 — Full CI/CD Implementation
+- **CI pipeline** (`.github/workflows/backend-ci.yml`) expanded to cover all 8 services:
+  - Runs `dotnet test` to validate all tests pass
+  - Builds Docker images for all 8 services as a validation step
+- **CD pipeline** (`.github/workflows/cd-dev.yml`) fully built from scratch:
+  - Applies database migrations automatically on every deploy
+  - Builds and pushes Docker images for all 8 services to ACR
+  - Configures ACR credentials on each Container App
+  - Deploys all 8 services to Azure Container Apps
+  - Configures AuthService database connection string (stored as encrypted secret)
+  - Smoke tests AuthService health after deployment
+  - Sets `minReplicas=1` on ApiGateway and AuthService to prevent cold starts
+
+---
+
+### 12) Azure Container Registry (ACR)
+- Set up a private Docker image registry on Azure.
+- All 8 service images are tagged with both the Git commit SHA and `:latest`.
+- CI/CD pipeline authenticates and pushes images automatically.
+- Credentials stored securely as GitHub Actions secrets.
+
+---
+
+### 13) Azure Container Apps — Cloud Deployment
+- Created a Container Apps Environment (`erp-dev-env`) in Southeast Asia.
+- Deployed all 8 microservices as individual Azure Container Apps:
+
+| Container App | Ingress | Azure URL |
+|---|---|---|
+| `apigateway-dev` | External (public) | `apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io` |
+| `authservice-dev` | External (public) | `authservice-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io` |
+| `customerservice-dev` | Internal only | — |
+| `orderservice-dev` | Internal only | — |
+| `productservice-dev` | Internal only | — |
+| `forecastservice-dev` | Internal only | — |
+| `predictionservice-dev` | Internal only | — |
+| `analyticsservice-dev` | Internal only | — |
+
+---
+
+### 14) Azure OIDC — Passwordless Authentication
+- Replaced legacy service principal credentials with **OIDC (OpenID Connect)**.
+- Created a User-Assigned Managed Identity (`erp-github-mi`) with `Contributor` role on `erp-rg`.
+- Configured a Federated Credential to trust GitHub Actions from `san-rat/ERP_backend` on `dev`.
+- GitHub Secrets added: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
+- No passwords stored for Azure authentication — cryptographic proof only.
+
+---
+
+### 15) API Gateway — Production Ocelot Configuration
+- Created `src/ApiGateway/ocelot.Production.json` with Azure internal hostnames.
+- `program.cs` updated to auto-load `ocelot.{Environment}.json`:
+  - Local (`Development`): uses `ocelot.json` → routes to `localhost:PORT`
+  - Azure (`Production`): uses `ocelot.Production.json` → routes to `service-dev.internal.*.azurecontainerapps.io:443`
+- Fixed port mismatch: removed hardcoded `UseUrls("http://*:5000")` that was overriding the Docker `ASPNETCORE_URLS=http://+:8080`.
+
+---
+
+### 16) AuthService Database Connection (Azure MySQL)
+- Configured `ConnectionStrings__AuthDb` on `authservice-dev` Container App.
+- Used Azure's secret reference pattern:
+  1. Connection string stored as an encrypted Container App secret (`auth-db-conn`)
+  2. Env var references the secret by name — password never exposed in logs
+- Azure MySQL server: `erp-mysql-dev.mysql.database.azure.com`
+
+---
+
+### 17) Frontend Connectivity (Vercel)
+- Frontend repo connected to Vercel for automatic deployment.
+- Environment variable `VITE_API_BASE_URL` set to ApiGateway public URL.
+- Frontend uses `import.meta.env.VITE_API_BASE_URL` for all API calls — no hardcoded URLs.
+- Auth flow: Frontend → ApiGateway → AuthService → JWT returned → stored in sessionStorage.
+
+---
+
+### 18) DevOps Documentation
+- `docs/DevOps/Sprint1/devops-sprint1.md` — Full sprint walkthrough (layman-friendly)
+- `docs/DevOps/Sprint1/troubleshooting-sprint1.md` — All problems encountered and fixed
 
 ---
 
@@ -113,25 +190,36 @@ A CD pipeline (`cd-dev.yml`) is also present for deployment automation.
 ERP_backend/
 ├── .github/
 │   ├── workflows/
-│   │   ├── backend-ci.yml        # CI pipeline (build + Docker validate)
-│   │   └── cd-dev.yml            # CD pipeline
+│   │   ├── backend-ci.yml        # CI — build, test, Docker validate (all 8 services)
+│   │   └── cd-dev.yml            # CD — migrate, build, push, deploy to Azure
 │   └── pull_request_template.md
 ├── docs/
 │   ├── SRS/SRS.pdf
-│   ├── micro_archi_structure_guide/micro_archi.md
+│   ├── micro_archi_structure_guide/
+│   │   ├── micro_archi.md
+│   │   └── structure_guide.md
+│   ├── DevOps/
+│   │   └── Sprint1/
+│   │       ├── devops-sprint1.md
+│   │       └── troubleshooting-sprint1.md
 │   ├── contribution_doc/
 │   └── security/
 ├── src/
-│   ├── ApiGateway/               # API Gateway skeleton   :5279
-│   ├── AuthService/              # Auth + JWT             :5288
-│   ├── CustomerService/          # Customer management    :5071
-│   ├── OrderService/             # Order lifecycle        :5113
-│   ├── ProductService/           # Product catalog        :5038
-│   ├── AnalyticsService/         # Business analytics     :5199
-│   ├── ForecastService/          # Demand forecasting     :5044
-│   └── PredictionService/        # ML predictions         :5197
+│   ├── ApiGateway/               # Ocelot API Gateway          :5000
+│   │   ├── ocelot.json           #   → local routing config
+│   │   └── ocelot.Production.json#   → Azure routing config
+│   ├── AuthService/              # Auth + JWT                  :5001
+│   ├── CustomerService/          # Customer management         :5002
+│   ├── OrderService/             # Order lifecycle             :5003
+│   ├── ProductService/           # Product catalog             :5004
+│   ├── ForecastService/          # Demand forecasting          :5005
+│   ├── PredictionService/        # ML predictions              :5006
+│   └── AnalyticsService/         # Business analytics          :5007
 ├── db/
+│   └── auth/
+│       └── migrations/           # SQL migration scripts
 ├── scripts/
+│   └── apply_migrations.sh       # Migration runner script
 ├── tests/
 ├── docker-compose.yml            # Local MySQL dev DB
 ├── ERP_Backend.slnx              # Solution file
@@ -140,18 +228,18 @@ ERP_backend/
 
 ---
 
-## � Service Port Reference
+## 🔌 Service Port Reference
 
-| Service | Local HTTP | Local HTTPS | Container |
+| Service | Local HTTP | Container | Azure Container App |
 |---|---|---|---|
-| ApiGateway | `5279` | `7126` | `8080` |
-| AuthService | `5288` | `7009` | `8080` |
-| CustomerService | `5071` | — | `8080` |
-| OrderService | `5113` | — | `8080` |
-| ProductService | `5038` | — | `8080` |
-| AnalyticsService | `5199` | — | `8080` |
-| ForecastService | `5044` | — | `8080` |
-| PredictionService | `5197` | — | `8080` |
+| ApiGateway | `5000` | `8080` | `apigateway-dev` (external) |
+| AuthService | `5001` | `8080` | `authservice-dev` (external) |
+| CustomerService | `5002` | `8080` | `customerservice-dev` (internal) |
+| OrderService | `5003` | `8080` | `orderservice-dev` (internal) |
+| ProductService | `5004` | `8080` | `productservice-dev` (internal) |
+| ForecastService | `5005` | `8080` | `forecastservice-dev` (internal) |
+| PredictionService | `5006` | `8080` | `predictionservice-dev` (internal) |
+| AnalyticsService | `5007` | `8080` | `analyticsservice-dev` (internal) |
 
 ---
 
@@ -179,10 +267,14 @@ docker-compose up -d
 
 ---
 
-## 🚧 Next Planned Steps
-- Add Azure Container Registry (ACR)
-- Push Docker images to ACR via CD pipeline
-- Deploy services to Azure Container Apps
-- Implement JWT validation in AuthService
-- Connect services through the API Gateway
-- Add database connections per service
+## 🚧 Sprint 2 Backlog
+
+- [ ] `JWT_SECRET` as GitHub secret — both ApiGateway and AuthService must read from env var (currently falls back to hardcoded default)
+- [ ] CD blocked by CI — CD should only run if CI tests pass first
+- [ ] Smoke test through ApiGateway — test `/auth/health` via gateway URL to verify routing
+- [ ] Production pipeline (`cd-prod.yml`) for the `main` branch
+- [ ] Database-backed AuthService — users currently in-memory (lost on restart), need MySQL persistence
+- [ ] DB connections for CustomerService, OrderService, ProductService (when DB schemas are defined)
+- [ ] Docker build layer caching — reduce build time by ~60%
+- [ ] Deployment notifications (Slack/Teams on success/failure)
+- [ ] CORS — update ApiGateway to allow specific Vercel domain instead of `AllowAnyOrigin`
