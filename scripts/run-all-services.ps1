@@ -14,7 +14,7 @@ $services = @(
     @{ Name = "ForecastService";   Port = 5005; Path = "src\ForecastService"   },
     @{ Name = "PredictionService"; Port = 5006; Path = "src\PredictionService" },
     @{ Name = "AnalyticsService";  Port = 5007; Path = "src\AnalyticsService"  },
-    @{ Name = "ApiGateway";        Port = 5279; Path = "src\ApiGateway"        }
+    @{ Name = "ApiGateway";        Port = 5000; Path = "src\ApiGateway"        }
 )
 
 Write-Host ""
@@ -46,16 +46,16 @@ foreach ($svc in $services) {
 }
 Write-Host ""
 Write-Host "  Gateway health checks (test routing):"    -ForegroundColor Yellow
-Write-Host "    http://localhost:5279/health"            -ForegroundColor White
-Write-Host "    http://localhost:5279/auth/health"       -ForegroundColor White
-Write-Host "    http://localhost:5279/customer/health"   -ForegroundColor White
-Write-Host "    http://localhost:5279/order/health"      -ForegroundColor White
-Write-Host "    http://localhost:5279/product/health"    -ForegroundColor White
-Write-Host "    http://localhost:5279/forecast/health"   -ForegroundColor White
-Write-Host "    http://localhost:5279/prediction/health" -ForegroundColor White
-Write-Host "    http://localhost:5279/analytics/health"  -ForegroundColor White
+Write-Host "    http://localhost:5000/health"            -ForegroundColor White
+Write-Host "    http://localhost:5000/auth/health"       -ForegroundColor White
+Write-Host "    http://localhost:5000/customer/health"   -ForegroundColor White
+Write-Host "    http://localhost:5000/order/health"      -ForegroundColor White
+Write-Host "    http://localhost:5000/product/health"    -ForegroundColor White
+Write-Host "    http://localhost:5000/forecast/health"   -ForegroundColor White
+Write-Host "    http://localhost:5000/prediction/health" -ForegroundColor White
+Write-Host "    http://localhost:5000/analytics/health"  -ForegroundColor White
 Write-Host ""
-Write-Host "  Close individual windows to stop each service."          -ForegroundColor DarkGray
-Write-Host "  Or run .\scripts\stop-all-services.ps1 to kill all."    -ForegroundColor DarkGray
-Write-Host "============================================"               -ForegroundColor Cyan
+Write-Host "  Close individual windows to stop each service."        -ForegroundColor DarkGray
+Write-Host "  Or run .\scripts\stop-all-services.ps1 to kill all." -ForegroundColor DarkGray
+Write-Host "=========================================="              -ForegroundColor Cyan
 Write-Host ""

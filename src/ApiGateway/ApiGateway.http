@@ -1,4 +1,4 @@
-@ApiGateway_HostAddress = http://localhost:5279
+@ApiGateway_HostAddress = http://localhost:5000
 
 ###
 # Gateway — self health check

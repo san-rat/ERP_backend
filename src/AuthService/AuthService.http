@@ -1,5 +1,5 @@
 @AuthService_HostAddress = http://localhost:5001
-@gateway = http://localhost:5279
+@gateway = http://localhost:5000
 
 ###
 // Check health without JWT token

@@ -1,5 +1,5 @@
 @AnalyticsService_HostAddress = http://localhost:5007
-@gateway = http://localhost:5279
+@gateway = http://localhost:5000
 
 ###
 # Direct — health check (no token)
