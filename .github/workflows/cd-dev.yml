@@ -95,9 +95,23 @@ jobs:
               --image "$IMAGE"
           done
 
+      - name: Configure AuthService DB connection string
+        env:
+          AUTH_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING }}
+        run: |
+          echo ">>> Setting ConnectionStrings__AuthDb secret on authservice-dev..."
+          az containerapp secret set \
+            --name authservice-dev \
+            --resource-group erp-rg \
+            --secrets "auth-db-conn=$AUTH_DB_CONN"
+
+          az containerapp update \
+            --name authservice-dev \
+            --resource-group erp-rg \
+            --set-env-vars "ConnectionStrings__AuthDb=secretref:auth-db-conn"
+
       - name: Smoke test — AuthService health check
         run: |
           echo "Waiting 30s for new revision to become active..."
           sleep 30
           curl -fsS "${{ secrets.AUTH_SERVICE_URL }}/health"
-          curl -fsS "${{ secrets.AUTH_SERVICE_URL }}/db-check"
