@@ -1,6 +1,6 @@
 # InsightERP — Backend
 
-A .NET microservices backend for the InsightERP platform, using an Ocelot API Gateway, MySQL via Docker, and a React + Vite frontend.
+A .NET microservices backend for the InsightERP platform, using an Ocelot API Gateway, MySQL on Azure, and a React + Vite frontend deployed on Vercel.
 
 ---
 
@@ -9,20 +9,22 @@ A .NET microservices backend for the InsightERP platform, using an Ocelot API Ga
 | Layer | Technology |
 |---|---|
 | Backend | .NET 9, ASP.NET Core Web API |
-| API Gateway | Ocelot |
-| Auth | JWT Bearer tokens |
-| Database | MySQL 8 (Docker) |
-| Frontend | React + Vite |
-| Containerization | Docker / Docker Compose |
+| API Gateway | Ocelot `24.1.0` |
+| Auth | JWT Bearer tokens (HMAC-SHA256) |
+| Database | MySQL 8 (Docker locally / Azure MySQL in cloud) |
+| Frontend | React + Vite (deployed on Vercel) |
+| Containerization | Docker (multi-stage builds) |
+| Image Registry | Azure Container Registry (ACR) |
+| Cloud Hosting | Azure Container Apps |
 | CI/CD | GitHub Actions |
-| Cloud | Azure Container Apps |
+| Azure Auth | OIDC — passwordless, no stored credentials |
 
 ---
 
 ## Architecture
 
 ```
-Frontend (Vite :5173)
+Frontend (Vite :5173 locally / Vercel in cloud)
         │
         ▼
 API Gateway (:5000)   ← single entry point for all requests
@@ -36,8 +38,22 @@ API Gateway (:5000)   ← single entry point for all requests
         └── AnalyticsService   (:5007)
                 │
                 ▼
-         MySQL DB (:3307)  ← via Docker
+         MySQL DB (:3307)  ← Docker locally / Azure MySQL in cloud
 ```
+
+---
+
+## 🌐 Live Environment (Azure — dev)
+
+| Resource | URL |
+|---|---|
+| **API Gateway** | https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io |
+| **AuthService** | https://authservice-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io |
+| **Gateway Swagger** | https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/swagger |
+| **Auth Swagger** | https://authservice-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/swagger |
+| **Gateway Health** | https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/auth/health |
+
+> All other services (Customer, Order, Product, Forecast, Prediction, Analytics) are **internal only** — accessible only through the API Gateway, not directly from the internet.
 
 ---
 
@@ -49,7 +65,7 @@ API Gateway (:5000)   ← single entry point for all requests
 
 ---
 
-## 🚀 Starting the System
+## 🚀 Starting the System Locally
 
 ### Option 1 — Login / Auth only (minimal setup)
 
@@ -132,9 +148,11 @@ docker compose down
 
 ## Service URLs
 
+### Local Development
+
 | Service | Local URL | Swagger |
 |---|---|---|
-| API Gateway | http://localhost:5000 | — |
+| API Gateway | http://localhost:5000 | http://localhost:5000/swagger |
 | AuthService | http://localhost:5001 | http://localhost:5001/swagger |
 | CustomerService | http://localhost:5002 | http://localhost:5002/swagger |
 | OrderService | http://localhost:5003 | http://localhost:5003/swagger |
@@ -148,6 +166,7 @@ docker compose down
 
 ## Gateway Health Checks
 
+### Local
 ```
 http://localhost:5000/auth/health
 http://localhost:5000/customer/health
@@ -158,8 +177,54 @@ http://localhost:5000/prediction/health
 http://localhost:5000/analytics/health
 ```
 
+### Azure (dev)
+```
+https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/auth/health
+https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/customer/health
+https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/order/health
+https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/product/health
+https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/forecast/health
+https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/prediction/health
+https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/analytics/health
+```
+
 ---
 
-## CI/CD
+## ⚙️ CI/CD Pipelines
 
-GitHub Actions pipelines are configured in `.github/workflows/`. Pushes to the main branch trigger build and container publish to Azure Container Registry (ACR).
+Both pipelines live in `.github/workflows/`.
+
+### CI — `backend-ci.yml`
+**Triggers:** Every push to any branch, every pull request
+
+Runs automatically to catch broken code early:
+1. Restores all .NET packages
+2. Builds the full solution
+3. Runs all automated tests (`dotnet test`)
+4. Builds Docker images for all 8 services (validates Dockerfiles)
+
+### CD — `cd-dev.yml`
+**Triggers:** Push to the `dev` branch only
+
+Deploys everything to Azure automatically:
+1. Applies database migrations against Azure MySQL
+2. Builds and pushes all 8 Docker images to Azure Container Registry
+3. Logs into Azure using **OIDC** (passwordless — no stored credentials)
+4. Configures ACR credentials on each Container App
+5. Deploys updated images to all 8 Azure Container Apps
+6. Sets the AuthService DB connection string as an encrypted secret
+7. Smoke tests the AuthService `/health` endpoint to confirm deployment
+
+---
+
+## 📁 Documentation
+
+| Document | Description |
+|---|---|
+| [`whatdone.md`](./whatdone.md) | Full project progress log — everything built so far |
+| [`docs/micro_archi_structure_guide/micro_archi.md`](./docs/micro_archi_structure_guide/micro_archi.md) | Microservice architecture, ports, and Azure deployment details |
+| [`docs/micro_archi_structure_guide/structure_guide.md`](./docs/micro_archi_structure_guide/structure_guide.md) | AuthService folder/file breakdown |
+| [`docs/DevOps/Sprint1/devops-sprint1.md`](./docs/DevOps/Sprint1/devops-sprint1.md) | DevOps Sprint 1 — full CI/CD implementation walkthrough |
+| [`docs/DevOps/Sprint1/troubleshooting-sprint1.md`](./docs/DevOps/Sprint1/troubleshooting-sprint1.md) | All problems encountered in Sprint 1 and how they were fixed |
+| [`docs/security/SECURITY_BEST_PRACTICES.md`](./docs/security/SECURITY_BEST_PRACTICES.md) | Security guidelines |
+| [`docs/contribution_doc/`](./docs/contribution_doc/) | Contribution guidelines |

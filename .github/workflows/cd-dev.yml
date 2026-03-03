@@ -93,6 +93,15 @@ jobs:
               --name "$APP" \
               --resource-group erp-rg \
               --image "$IMAGE"
+
+            # Keep the gateway and auth service always warm (minReplicas=1)
+            # so the frontend never hits a cold-start on first load
+            if [[ "$APP" == "apigateway-dev" || "$APP" == "authservice-dev" ]]; then
+              az containerapp update \
+                --name "$APP" \
+                --resource-group erp-rg \
+                --min-replicas 1
+            fi
           done
 
       - name: Configure AuthService DB connection string

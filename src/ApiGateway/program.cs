@@ -21,8 +21,6 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Force the application to listen on port 5000 (overrides launchSettings.json)
-    builder.WebHost.UseUrls("http://*:5000");
 
     builder.Host.UseSerilog();
 
@@ -32,6 +30,7 @@ try
         .AddJsonFile("appsettings.json",                                          optional: false, reloadOnChange: true)
         .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json",   optional: true)
         .AddJsonFile("ocelot.json",                                               optional: false, reloadOnChange: true)
+        .AddJsonFile($"ocelot.{builder.Environment.EnvironmentName}.json",        optional: true,  reloadOnChange: true)
         .AddEnvironmentVariables();
 
     // ── JWT settings ──────────────────────────────────────────────────────────
