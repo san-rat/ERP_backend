@@ -2,4 +2,8 @@
   <Folder Name="/src/">
     <Project Path="src/AuthService/AuthService.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/src/ApiGateway.Tests/ApiGateway.Tests.csproj" />
+    <Project Path="tests/src/AuthService.Tests/AuthService.Tests.csproj" />
+  </Folder>
 </Solution>
