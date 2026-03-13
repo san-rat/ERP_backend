@@ -30,9 +30,9 @@ public class AuthController : ControllerBase
 
     // ── Dependencies ──────────────────────────────────────────────────────────
     private readonly JwtTokenService _jwt;
-    private readonly UserRepository  _users;
+    private readonly IUserRepository  _users;
 
-    public AuthController(JwtTokenService jwt, UserRepository users)
+    public AuthController(JwtTokenService jwt, IUserRepository users)
     {
         _jwt   = jwt;
         _users = users;

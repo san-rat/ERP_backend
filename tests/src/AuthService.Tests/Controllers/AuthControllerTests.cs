@@ -4,24 +4,17 @@ using AuthService.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using System.Collections.Concurrent;
 
 namespace AuthService.Tests.Controllers;
 
 /// <summary>
 /// Unit tests for <see cref="AuthController"/>.
-///
-/// Design note: AuthController uses a static ConcurrentDictionary seeded with
-/// three accounts (admin/manager/employee). To avoid cross-test pollution every
-/// test that registers a new user uses a unique username via Guid.NewGuid().
 /// </summary>
 public class AuthControllerTests
 {
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Builds a <see cref="JwtTokenService"/> wired to an in-memory config with
-    /// a 256-bit secret, so no environment variable is needed during tests.
-    /// </summary>
     private static JwtTokenService BuildJwtService() =>
         new(new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -33,10 +26,51 @@ public class AuthControllerTests
             })
             .Build());
 
-    private static AuthController BuildController() =>
-        new(BuildJwtService());
+    private static string HashPassword(string password)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(password));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
 
-    /// <summary>Returns a unique username so parallel tests don't collide.</summary>
+    /// <summary>
+    /// A stateful fake repository to mimic database behavior in unit tests.
+    /// Replaces the old ConcurrentDictionary previously used within AuthController.
+    /// </summary>
+    private class FakeUserRepository : IUserRepository
+    {
+        private readonly ConcurrentDictionary<string, DbUser> _users = new(StringComparer.OrdinalIgnoreCase);
+
+        public FakeUserRepository()
+        {
+            // Seed the same initial accounts expected by the unit tests.
+            _users["admin"]    = new DbUser(Guid.NewGuid(), "admin",    "admin@test.com", HashPassword("Admin@123"),    "Admin",    true, "Admin");
+            _users["manager"]  = new DbUser(Guid.NewGuid(), "manager",  "mgr@test.com",   HashPassword("Manager@123"),  "Manager",  true, "Manager");
+            _users["employee"] = new DbUser(Guid.NewGuid(), "employee", "emp@test.com",   HashPassword("Employee@123"), "Employee", true, "Employee");
+        }
+
+        public Task<DbUser?> FindByUsernameAsync(string username)
+        {
+            _users.TryGetValue(username, out var user);
+            return Task.FromResult(user);
+        }
+
+        public Task<bool> UsernameExistsAsync(string username)
+        {
+            return Task.FromResult(_users.ContainsKey(username));
+        }
+
+        public Task<Guid> CreateUserAsync(string username, string email, string passwordHash, string? fullName, string roleName)
+        {
+            var id = Guid.NewGuid();
+            var user = new DbUser(id, username, email, passwordHash, fullName, true, roleName);
+            _users.TryAdd(username, user);
+            return Task.FromResult(id);
+        }
+    }
+
+    private static AuthController BuildController(IUserRepository? repo = null) =>
+        new(BuildJwtService(), repo ?? new FakeUserRepository());
+
     private static string UniqueUser(string prefix = "user") =>
         $"{prefix}_{Guid.NewGuid():N}";
 
@@ -45,12 +79,12 @@ public class AuthControllerTests
     // ═══════════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void Register_WithValidCredentials_Returns201WithToken()
+    public async Task Register_WithValidCredentials_Returns201WithToken()
     {
         var ctrl = BuildController();
         var username = UniqueUser("reg");
 
-        var result = ctrl.Register(new RegisterRequest(username, "P@ss1234"));
+        var result = await ctrl.Register(new RegisterRequest(username, $"{username}@test.com", "P@ss1234"));
 
         var created = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
@@ -63,11 +97,12 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Register_WithNoRoleSupplied_DefaultsToEmployee()
+    public async Task Register_WithNoRoleSupplied_DefaultsToEmployee()
     {
         var ctrl = BuildController();
+        var username = UniqueUser();
 
-        var result = ctrl.Register(new RegisterRequest(UniqueUser(), "P@ss1234"));
+        var result = await ctrl.Register(new RegisterRequest(username, $"{username}@test.com", "P@ss1234"));
 
         var created = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
@@ -77,11 +112,12 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Register_WithManagerRole_Returns201WithManagerRole()
+    public async Task Register_WithManagerRole_Returns201WithManagerRole()
     {
         var ctrl = BuildController();
+        var username = UniqueUser();
 
-        var result = ctrl.Register(new RegisterRequest(UniqueUser(), "P@ss1234", "Manager"));
+        var result = await ctrl.Register(new RegisterRequest(username, $"{username}@test.com", "P@ss1234", "Full Name", "Manager"));
 
         var created = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
@@ -91,11 +127,12 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Register_WithEmployeeRole_Returns201WithEmployeeRole()
+    public async Task Register_WithEmployeeRole_Returns201WithEmployeeRole()
     {
         var ctrl = BuildController();
+        var username = UniqueUser();
 
-        var result = ctrl.Register(new RegisterRequest(UniqueUser(), "P@ss1234", "Employee"));
+        var result = await ctrl.Register(new RegisterRequest(username, $"{username}@test.com", "P@ss1234", "Full Name", "Employee"));
 
         var created = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
@@ -105,11 +142,12 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Register_WithAdminRole_Returns400_AdminCannotBeSelfAssigned()
+    public async Task Register_WithAdminRole_Returns400_AdminCannotBeSelfAssigned()
     {
         var ctrl = BuildController();
+        var username = UniqueUser();
 
-        var result = ctrl.Register(new RegisterRequest(UniqueUser(), "P@ss1234", "Admin"));
+        var result = await ctrl.Register(new RegisterRequest(username, $"{username}@test.com", "P@ss1234", "Full Name", "Admin"));
 
         var bad = Assert.IsType<BadRequestObjectResult>(result);
         Assert.NotNull(bad.Value);
@@ -120,11 +158,12 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Register_WithUnknownRole_Returns400_InvalidRole()
+    public async Task Register_WithUnknownRole_Returns400_InvalidRole()
     {
         var ctrl = BuildController();
+        var username = UniqueUser();
 
-        var result = ctrl.Register(new RegisterRequest(UniqueUser(), "P@ss1234", "SuperHero"));
+        var result = await ctrl.Register(new RegisterRequest(username, $"{username}@test.com", "P@ss1234", "Full Name", "SuperHero"));
 
         var bad = Assert.IsType<BadRequestObjectResult>(result);
         var message = GetProperty(bad.Value, "message")?.ToString();
@@ -132,13 +171,13 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Register_WithDuplicateUsername_Returns409Conflict()
+    public async Task Register_WithDuplicateUsername_Returns409Conflict()
     {
         var ctrl = BuildController();
         var username = UniqueUser("dup");
 
-        ctrl.Register(new RegisterRequest(username, "First@123"));                  // first
-        var result = ctrl.Register(new RegisterRequest(username, "Second@456"));    // duplicate
+        await ctrl.Register(new RegisterRequest(username, $"{username}@test.com", "First@123"));                  // first
+        var result = await ctrl.Register(new RegisterRequest(username, $"{username}@test.com", "Second@456"));    // duplicate
 
         var conflict = Assert.IsType<ConflictObjectResult>(result);
         var message = GetProperty(conflict.Value, "message")?.ToString();
@@ -146,15 +185,17 @@ public class AuthControllerTests
     }
 
     [Theory]
-    [InlineData("", "P@ss1234")]
-    [InlineData("  ", "P@ss1234")]
-    [InlineData("testuser", "")]
-    [InlineData("testuser", "  ")]
-    public void Register_WithMissingUsernameOrPassword_Returns400(string username, string password)
+    [InlineData("", "test@test.com", "P@ss1234")]
+    [InlineData("  ", "test@test.com", "P@ss1234")]
+    [InlineData("testuser", "", "P@ss1234")]
+    [InlineData("testuser", "  ", "P@ss1234")]
+    [InlineData("testuser", "test@test.com", "")]
+    [InlineData("testuser", "test@test.com", "  ")]
+    public async Task Register_WithMissingRequiredFields_Returns400(string username, string email, string password)
     {
         var ctrl = BuildController();
 
-        var result = ctrl.Register(new RegisterRequest(username, password));
+        var result = await ctrl.Register(new RegisterRequest(username, email, password));
 
         Assert.IsType<BadRequestObjectResult>(result);
     }
@@ -164,11 +205,11 @@ public class AuthControllerTests
     // ═══════════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void Login_WithSeededAdminCredentials_Returns200WithToken()
+    public async Task Login_WithSeededAdminCredentials_Returns200WithToken()
     {
         var ctrl = BuildController();
 
-        var result = ctrl.Login(new LoginRequest("admin", "Admin@123"));
+        var result = await ctrl.Login(new LoginRequest("admin", "Admin@123"));
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<AuthResponse>(ok.Value);
@@ -179,11 +220,11 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Login_WithSeededManagerCredentials_Returns200WithManagerRole()
+    public async Task Login_WithSeededManagerCredentials_Returns200WithManagerRole()
     {
         var ctrl = BuildController();
 
-        var result = ctrl.Login(new LoginRequest("manager", "Manager@123"));
+        var result = await ctrl.Login(new LoginRequest("manager", "Manager@123"));
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<AuthResponse>(ok.Value);
@@ -192,11 +233,11 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Login_WithSeededEmployeeCredentials_Returns200WithEmployeeRole()
+    public async Task Login_WithSeededEmployeeCredentials_Returns200WithEmployeeRole()
     {
         var ctrl = BuildController();
 
-        var result = ctrl.Login(new LoginRequest("employee", "Employee@123"));
+        var result = await ctrl.Login(new LoginRequest("employee", "Employee@123"));
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<AuthResponse>(ok.Value);
@@ -205,15 +246,16 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Login_AfterRegistration_Returns200WithToken()
+    public async Task Login_AfterRegistration_Returns200WithToken()
     {
-        var ctrl = BuildController();
+        var repo = new FakeUserRepository();
+        var ctrl = BuildController(repo);
         var username = UniqueUser("logintest");
         const string password = "MyPass@999";
 
-        ctrl.Register(new RegisterRequest(username, password, "Manager"));
+        await ctrl.Register(new RegisterRequest(username, $"{username}@test.com", password, "Full Name", "Manager"));
 
-        var result = ctrl.Login(new LoginRequest(username, password));
+        var result = await ctrl.Login(new LoginRequest(username, password));
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<AuthResponse>(ok.Value);
@@ -223,11 +265,11 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Login_WithWrongPassword_Returns401()
+    public async Task Login_WithWrongPassword_Returns401()
     {
         var ctrl = BuildController();
 
-        var result = ctrl.Login(new LoginRequest("admin", "WrongPassword!"));
+        var result = await ctrl.Login(new LoginRequest("admin", "WrongPassword!"));
 
         var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result);
         var message = GetProperty(unauthorized.Value, "message")?.ToString();
@@ -235,11 +277,11 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Login_WithNonExistentUsername_Returns401()
+    public async Task Login_WithNonExistentUsername_Returns401()
     {
         var ctrl = BuildController();
 
-        var result = ctrl.Login(new LoginRequest("nobody_exists_xxx", "AnyPass@1"));
+        var result = await ctrl.Login(new LoginRequest("nobody_exists_xxx", "AnyPass@1"));
 
         var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result);
         var message = GetProperty(unauthorized.Value, "message")?.ToString();
@@ -247,12 +289,11 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Login_WithCaseSensitivePassword_Returns401_WhenCaseWrong()
+    public async Task Login_WithCaseSensitivePassword_Returns401_WhenCaseWrong()
     {
-        // Passwords are SHA-256 hashed — casing matters
         var ctrl = BuildController();
 
-        var result = ctrl.Login(new LoginRequest("admin", "admin@123")); // lowercase 'a'
+        var result = await ctrl.Login(new LoginRequest("admin", "admin@123")); // lowercase 'a'
 
         Assert.IsType<UnauthorizedObjectResult>(result);
     }
@@ -262,25 +303,24 @@ public class AuthControllerTests
     // ═══════════════════════════════════════════════════════════════════════════
 
     [Fact]
-    public void Login_ReturnedToken_HasThreeParts_WellFormedJwt()
+    public async Task Login_ReturnedToken_HasThreeParts_WellFormedJwt()
     {
         var ctrl = BuildController();
 
         var ok = Assert.IsType<OkObjectResult>(
-            ctrl.Login(new LoginRequest("admin", "Admin@123")));
+            await ctrl.Login(new LoginRequest("admin", "Admin@123")));
         var response = Assert.IsType<AuthResponse>(ok.Value);
 
-        // A valid JWT always contains exactly two dots
         Assert.Equal(2, response.Token.Count(c => c == '.'));
     }
 
     [Fact]
-    public void Login_ExpiresAt_IsInTheFuture()
+    public async Task Login_ExpiresAt_IsInTheFuture()
     {
         var ctrl = BuildController();
 
         var ok = Assert.IsType<OkObjectResult>(
-            ctrl.Login(new LoginRequest("admin", "Admin@123")));
+            await ctrl.Login(new LoginRequest("admin", "Admin@123")));
         var response = Assert.IsType<AuthResponse>(ok.Value);
 
         Assert.True(response.ExpiresAt > DateTime.UtcNow);

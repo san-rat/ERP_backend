@@ -5,7 +5,7 @@ namespace AuthService.Services;
 /// <summary>
 /// Handles all database operations for the auth.users and auth.roles tables.
 /// </summary>
-public sealed class UserRepository
+public sealed class UserRepository : IUserRepository
 {
     private readonly IConfiguration _config;
 
