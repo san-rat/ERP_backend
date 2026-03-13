@@ -17,6 +17,7 @@ var jwtAudience = builder.Configuration["JwtSettings:Audience"]  ?? "InsightERP-
 
 // ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddScoped<UserRepository>();
 
 // ── JWT Bearer authentication ─────────────────────────────────────────────────
 builder.Services
