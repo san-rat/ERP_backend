@@ -1,6 +1,6 @@
 # InsightERP — Backend
 
-A .NET microservices backend for the InsightERP platform, using an Ocelot API Gateway, MySQL on Azure, and a React + Vite frontend deployed on Vercel.
+A .NET microservices backend for the InsightERP platform, using an Ocelot API Gateway, Azure SQL Server, and a React + Vite frontend deployed on Vercel.
 
 ---
 
@@ -11,7 +11,7 @@ A .NET microservices backend for the InsightERP platform, using an Ocelot API Ga
 | Backend | .NET 9, ASP.NET Core Web API |
 | API Gateway | Ocelot `24.1.0` |
 | Auth | JWT Bearer tokens (HMAC-SHA256) |
-| Database | MySQL 8 (Docker locally / Azure MySQL in cloud) |
+| Database | Azure SQL Server / Azure SQL Database (single DB, per-service schemas) |
 | Frontend | React + Vite (deployed on Vercel) |
 | Containerization | Docker (multi-stage builds) |
 | Image Registry | Azure Container Registry (ACR) |
@@ -38,7 +38,8 @@ API Gateway (:5000)   ← single entry point for all requests
         └── AnalyticsService   (:5007)
                 │
                 ▼
-         MySQL DB (:3307)  ← Docker locally / Azure MySQL in cloud
+         Azure SQL DB      ← insighterp_db on insighterp-sqlserver.database.windows.net
+                           (single database, isolated per service by SQL schema)
 ```
 
 ---
@@ -96,13 +97,13 @@ npm run dev
 # Runs on http://localhost:5173
 ```
 
-You can now log in with the pre-seeded test accounts:
+You can now log in with the default seeded admin account:
 
 | Username | Password | Role |
 |---|---|---|
 | `admin` | `Admin@123` | Admin |
-| `manager` | `Manager@123` | Manager |
-| `employee` | `Employee@123` | Employee |
+
+> Additional users can be created via `POST /api/auth/register`. Credentials are stored in Azure SQL (`auth.users`).
 
 ---
 
@@ -207,12 +208,12 @@ Runs automatically to catch broken code early:
 **Triggers:** Push to the `dev` branch only
 
 Deploys everything to Azure automatically:
-1. Applies database migrations against Azure MySQL
+1. Applies T-SQL database migrations against **Azure SQL** (`insighterp_db`) using `sqlcmd`
 2. Builds and pushes all 8 Docker images to Azure Container Registry
 3. Logs into Azure using **OIDC** (passwordless — no stored credentials)
 4. Configures ACR credentials on each Container App
 5. Deploys updated images to all 8 Azure Container Apps
-6. Sets the AuthService DB connection string as an encrypted secret
+6. Sets the AuthService DB connection string (`AUTH_DB_CONNECTION_STRING_AZURE`) as an encrypted secret
 7. Smoke tests the AuthService `/health` endpoint to confirm deployment
 
 ---
@@ -222,6 +223,7 @@ Deploys everything to Azure automatically:
 | Document | Description |
 |---|---|
 | [`whatdone.md`](./whatdone.md) | Full project progress log — everything built so far |
+| [`docs/database/database-guide.md`](./docs/database/database-guide.md) | 🗄️ **Database guide** — architecture, local setup, Azure deployment, how to add schemas, migration rules |
 | [`docs/micro_archi_structure_guide/micro_archi.md`](./docs/micro_archi_structure_guide/micro_archi.md) | Microservice architecture, ports, and Azure deployment details |
 | [`docs/micro_archi_structure_guide/structure_guide.md`](./docs/micro_archi_structure_guide/structure_guide.md) | AuthService folder/file breakdown |
 | [`docs/DevOps/Sprint1/devops-sprint1.md`](./docs/DevOps/Sprint1/devops-sprint1.md) | DevOps Sprint 1 — full CI/CD implementation walkthrough |
