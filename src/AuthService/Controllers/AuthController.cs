@@ -2,7 +2,6 @@ using AuthService.Models;
 using AuthService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -12,23 +11,7 @@ namespace AuthService.Controllers;
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
-    // ── In-memory user store ────────────────────────────────────────────────────
-    // userId → UserRecord (thread-safe, replaces DB for this iteration)
-    private static readonly ConcurrentDictionary<string, UserRecord> _users = new(
-        StringComparer.OrdinalIgnoreCase);
-
-    // Pre-seeded test accounts — one per role
-    static AuthController()
-    {
-        Seed("admin-001",    "admin",    "Admin@123",   "Admin");
-        Seed("manager-001",  "manager",  "Manager@123", "Manager");
-        Seed("employee-001", "employee", "Employee@123","Employee");
-    }
-
-    private static void Seed(string id, string username, string password, string role) =>
-        _users[username] = new UserRecord(id, username, HashPassword(password), role);
-
-    // ── Role definitions ──────────────────────────────────────────────────────────
+    // ── Role definitions ───────────────────────────────────────────────────────
 
     /// <summary>All valid roles in the system.</summary>
     private static readonly HashSet<string> AllowedRoles = new(StringComparer.OrdinalIgnoreCase)
@@ -45,57 +28,53 @@ public class AuthController : ControllerBase
         "Manager", "Employee"
     };
 
-    // ── Dependencies ─────────────────────────────────────────────────────────────
+    // ── Dependencies ──────────────────────────────────────────────────────────
     private readonly JwtTokenService _jwt;
+    private readonly UserRepository  _users;
 
-    public AuthController(JwtTokenService jwt) => _jwt = jwt;
+    public AuthController(JwtTokenService jwt, UserRepository users)
+    {
+        _jwt   = jwt;
+        _users = users;
+    }
 
-    // ── POST /api/auth/register ──────────────────────────────────────────────────
+    // ── POST /api/auth/register ───────────────────────────────────────────────
 
     /// <summary>
     /// Register a new user and receive a JWT immediately (auto-login).
-    /// <para>
-    /// <b>Role rules:</b><br/>
-    /// • Omit <c>Role</c> → defaults to <c>Employee</c>.<br/>
-    /// • Supply <c>"Manager"</c> or <c>"Employee"</c> → accepted.<br/>
-    /// • Supply <c>"Admin"</c> → 400 Bad Request (Admin cannot be self-assigned).<br/>
-    /// • Supply any other string → 400 Bad Request.
-    /// </para>
     /// </summary>
     [HttpPost("register")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public IActionResult Register([FromBody] RegisterRequest request)
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Username) ||
+            string.IsNullOrWhiteSpace(request.Email)    ||
             string.IsNullOrWhiteSpace(request.Password))
         {
-            return BadRequest(new { message = "Username and Password are required." });
+            return BadRequest(new { message = "Username, Email, and Password are required." });
         }
 
-        // ── Role validation ───────────────────────────────────────────────────
+        // ── Role validation ────────────────────────────────────────────────
         string role;
 
         if (string.IsNullOrWhiteSpace(request.Role))
         {
-            // No role supplied → default to Employee
             role = "Employee";
         }
         else if (!AllowedRoles.Contains(request.Role))
         {
-            // Unknown role string supplied
             return BadRequest(new
             {
-                message        = $"'{request.Role}' is not a valid role.",
-                allowedRoles   = SelfAssignableRoles.Order(),
-                hint           = "Omit the Role field to default to Employee."
+                message      = $"'{request.Role}' is not a valid role.",
+                allowedRoles = SelfAssignableRoles.Order(),
+                hint         = "Omit the Role field to default to Employee."
             });
         }
         else if (!SelfAssignableRoles.Contains(request.Role))
         {
-            // Known role but not self-assignable (i.e., Admin)
             return BadRequest(new
             {
                 message      = $"Role '{request.Role}' cannot be self-assigned during registration.",
@@ -105,26 +84,29 @@ public class AuthController : ControllerBase
         }
         else
         {
-            // Valid, self-assignable role — use exactly as supplied (preserves casing normalisation)
             role = SelfAssignableRoles.First(
                 r => r.Equals(request.Role, StringComparison.OrdinalIgnoreCase));
         }
 
-
-        var userId = Guid.NewGuid().ToString();
-        var record = new UserRecord(userId, request.Username, HashPassword(request.Password), role);
-
-        // Reject duplicate usernames
-        if (!_users.TryAdd(request.Username, record))
+        // ── Check username uniqueness ──────────────────────────────────────
+        if (await _users.UsernameExistsAsync(request.Username))
         {
             return Conflict(new { message = $"Username '{request.Username}' is already taken." });
         }
 
-        var response = _jwt.GenerateToken(userId, request.Username, role);
+        // ── Create user in DB ──────────────────────────────────────────────
+        var userId = await _users.CreateUserAsync(
+            request.Username,
+            request.Email,
+            HashPassword(request.Password),
+            request.FullName,
+            role);
+
+        var response = _jwt.GenerateToken(userId.ToString(), request.Username, role);
         return StatusCode(StatusCodes.Status201Created, response);
     }
 
-    // ── POST /api/auth/login ─────────────────────────────────────────────────────
+    // ── POST /api/auth/login ──────────────────────────────────────────────────
 
     /// <summary>
     /// Authenticate with username + password and receive a JWT.
@@ -133,26 +115,29 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public IActionResult Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        if (!_users.TryGetValue(request.Username, out var user))
+        var user = await _users.FindByUsernameAsync(request.Username);
+
+        if (user is null || user.PasswordHash != HashPassword(request.Password))
         {
             return Unauthorized(new { message = "Invalid credentials." });
         }
 
-        if (user.PasswordHash != HashPassword(request.Password))
+        if (!user.IsActive)
         {
-            return Unauthorized(new { message = "Invalid credentials." });
+            return Unauthorized(new { message = "Account is disabled." });
         }
 
-        var response = _jwt.GenerateToken(user.UserId, user.Username, user.Role);
+        var response = _jwt.GenerateToken(user.Id.ToString(), user.Username, user.Role);
         return Ok(response);
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Simple SHA-256 password hash (production should use BCrypt/Argon2).
+    /// Simple SHA-256 password hash.
+    /// Note: upgrade to BCrypt/Argon2 in a future sprint.
     /// </summary>
     private static string HashPassword(string password)
     {
@@ -160,10 +145,3 @@ public class AuthController : ControllerBase
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 }
-
-// ── Internal user record ─────────────────────────────────────────────────────
-internal sealed record UserRecord(
-    string UserId,
-    string Username,
-    string PasswordHash,
-    string Role);
