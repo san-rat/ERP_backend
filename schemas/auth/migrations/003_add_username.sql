@@ -8,6 +8,7 @@ IF NOT EXISTS (
 BEGIN
     ALTER TABLE auth.users ADD username NVARCHAR(100) NULL;
 END
+GO
 
 -- Create unique index on username (once column exists)
 IF NOT EXISTS (
@@ -23,3 +24,4 @@ BEGIN
 
     CREATE UNIQUE NONCLUSTERED INDEX uq_users_username ON auth.users(username);
 END
+GO
