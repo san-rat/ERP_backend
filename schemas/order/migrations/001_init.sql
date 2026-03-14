@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS orders (
+/*CREATE TABLE IF NOT EXISTS orders (
   id              CHAR(36)       NOT NULL,
   customer_id     CHAR(36)       NOT NULL COMMENT 'References customer_db.customers.id',
   status          VARCHAR(30)    NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED',
@@ -61,3 +61,4 @@ CREATE TABLE IF NOT EXISTS return_items (
   CONSTRAINT fk_ri_return     FOREIGN KEY (return_id)    REFERENCES returns(id)     ON DELETE CASCADE,
   CONSTRAINT fk_ri_order_item FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE CASCADE
 );
+*

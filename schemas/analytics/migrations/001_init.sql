@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS kpi_snapshots (
+/* CREATE TABLE IF NOT EXISTS kpi_snapshots (
   id           CHAR(36)       NOT NULL,
   kpi_name     VARCHAR(100)   NOT NULL,
   kpi_value    DECIMAL(18, 4) NOT NULL,
@@ -70,3 +70,4 @@ INSERT IGNORE INTO dashboard_widgets (id, widget_name, widget_type, display_orde
   (UUID(), 'Orders by Status',    'PIE_CHART',  6),
   (UUID(), 'Top Products',        'BAR_CHART',  7),
   (UUID(), 'Customer Activity',   'TABLE',      8);
+*/

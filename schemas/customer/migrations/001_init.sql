@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS customers (
+/*CREATE TABLE IF NOT EXISTS customers (
   id           CHAR(36)     NOT NULL,
   user_id      CHAR(36)     NOT NULL COMMENT 'References auth_db.users.id',
   first_name   VARCHAR(100) NOT NULL,
@@ -67,3 +67,4 @@ INSERT IGNORE INTO customer_segments (segment_name, description) VALUES
   ('New',         'Recently acquired customers'),
   ('Loyal',       'Long-term active customers'),
   ('Inactive',    'No activity in 90+ days');
+*/

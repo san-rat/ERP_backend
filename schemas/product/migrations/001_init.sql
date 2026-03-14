@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS categories (
+/*CREATE TABLE IF NOT EXISTS categories (
   id            INT          NOT NULL AUTO_INCREMENT,
   name          VARCHAR(100) NOT NULL,
   parent_id     INT          COMMENT 'Self-referencing for sub-categories',
@@ -69,3 +69,4 @@ INSERT IGNORE INTO categories (name) VALUES
   ('Food & Beverage'),
   ('Office Supplies'),
   ('Machinery');
+*/
