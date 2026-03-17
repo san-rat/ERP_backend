@@ -20,7 +20,7 @@ BEGIN
         @adminId,
         'admin',
         'admin@insighterp.com',
-        'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3',
+        'e86f78a8a3caf0b60d8e74e5942aa6d86dc150cd3c03338aef25b7d2d7e3acc7', -- SHA256 of Admin@123
         'System Admin',
         1,
         GETUTCDATE(),

@@ -1,17 +1,16 @@
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: erp-mysql-local
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: erp-sqlserver-local
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: auth_db
-      MYSQL_USER: auth_user
-      MYSQL_PASSWORD: auth_password
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "LocalDev_Password123!"
+      MSSQL_PID: "Developer"
     ports:
-      - "3307:3306"
+      - "1433:1433"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - sqlserver_data:/var/opt/mssql
 
 volumes:
-  mysql_data:
+  sqlserver_data:
