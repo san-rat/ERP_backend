@@ -240,15 +240,11 @@ The `allowedRoles` field in the 400 response body always lists the valid options
 
 ## Seeded Test Users
 
-The service starts with three in-memory accounts ready to use immediately:
+The service now reads users from SQL Server / Azure SQL through `ConnectionStrings:AuthDb`.
 
-| Username | Password | Role |
-|----------|----------|------|
-| `admin` | `Admin@123` | Admin |
-| `manager` | `Manager@123` | Manager |
-| `employee` | `Employee@123` | Employee |
+In a local environment, test users come from your applied migrations and any accounts you create through `POST /api/auth/register`.
 
-> These users live in memory and reset on every restart. Replace with a database before going to production.
+The canonical local database setup flow is documented in [local-database-setup.md](../../../docs/database/local-database-setup.md).
 
 ---
 
@@ -306,7 +302,7 @@ Password hashing is SHA-256. Ensure the password was not changed in `AuthControl
 
 **`409 Conflict` on register**
 
-Username is already taken. Choose a different username or restart the service (resets in-memory store).
+Username is already taken. Choose a different username or query `auth.users` in the database to inspect existing records.
 
 ---
 

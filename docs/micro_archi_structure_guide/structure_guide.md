@@ -47,20 +47,16 @@ Handles the main auth endpoints:
 - `POST /api/auth/login` — accepts `{ username, password }`, returns a JWT token
 - `POST /api/auth/register` — accepts `{ username, password, role }`, creates a user, returns a JWT
 
-Currently uses an **in-memory dictionary** to store users (not a database yet). Three accounts are pre-seeded at startup:
-```csharp
-Seed("admin",    "Admin@123",    "Admin");
-Seed("manager",  "Manager@123",  "Manager");
-Seed("employee", "Employee@123", "Employee");
-```
-> ⚠️ These in-memory users are lost when the container restarts or redeploys. Database persistence is planned for Sprint 2.
+The controller now uses `IUserRepository` to read and write users in the `auth` schema of SQL Server / Azure SQL.
 
-Passwords are hashed using SHA-256 before storing. (BCrypt/Argon2 is recommended for production.)
+Registration validates role rules, checks username uniqueness in the database, hashes the password with SHA-256, stores the user in `auth.users`, and issues a JWT immediately.
+
+Login looks up the user in the database, compares the stored password hash, checks `is_active`, and issues a JWT on success.
 
 #### `HealthController.cs`
 Two diagnostic endpoints:
 - `GET /health` — returns `"AuthService is running..."`. Public, no token required. Used by the CI/CD smoke test.
-- `GET /db-check` — connects to the real MySQL database and verifies connectivity. Requires a valid JWT token (`[Authorize]`).
+- `GET /db-check` — connects to the configured SQL Server / Azure SQL database and verifies connectivity. Requires a valid JWT token (`[Authorize]`).
 
 ---
 
@@ -205,7 +201,7 @@ The **.NET project file** — defines what this project is and what it depends o
 
 Key contents:
 - `<TargetFramework>net9.0</TargetFramework>` — uses .NET 9
-- Package references: JWT bearer, MySQL connector, Swagger, etc.
+- Package references: JWT bearer, `Microsoft.Data.SqlClient`, Swagger, etc.
 
 Without this file, the project cannot be built or run.
 
@@ -237,7 +233,7 @@ Frontend sends: POST /api/auth/login { username, password }
         ↓
 Reads LoginRequest model (validates shape)
         ↓
-Looks up user in ConcurrentDictionary
+Looks up user via IUserRepository in auth.users
         ↓
 Compares SHA-256 hash of password
         ↓
@@ -254,8 +250,8 @@ Frontend stores the token, uses it for all future requests
 
 | Current (Sprint 1) | Planned (Sprint 2) |
 |---|---|
-| Users stored in memory | Users stored in MySQL database |
+| Users stored in SQL Server / Azure SQL | Stronger auth management and broader schema rollout |
 | SHA-256 password hashing | BCrypt or Argon2 hashing |
 | No refresh tokens | Refresh token support |
-| 3 hardcoded seed accounts | Database-seeded accounts |
-| `ConnectionStrings__AuthDb` configured but unused for auth | Full DB-backed login/register |
+| Database-seeded or manually registered users | Better user lifecycle management |
+| `ConnectionStrings__AuthDb` drives the repository layer | Expand the same DB pattern to additional services |

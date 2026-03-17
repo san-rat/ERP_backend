@@ -215,7 +215,7 @@ This document outlines all microservices in the InsightERP backend system, their
 | Resource Group | `erp-rg` | Southeast Asia region |
 | Container Apps Environment | `erp-dev-env` | Shared network for all 8 services |
 | Container Registry | ACR (private) | Stores all 8 Docker images |
-| MySQL Server | `erp-mysql-dev.mysql.database.azure.com` | Auth database |
+| Azure SQL Server | `insighterp-sqlserver.database.windows.net` | Hosts `insighterp_db` |
 | Managed Identity | `erp-github-mi` | Used for OIDC GitHub Actions deployment |
 
 ---
@@ -232,6 +232,6 @@ This document outlines all microservices in the InsightERP backend system, their
 | CI/CD | GitHub Actions |
 | Image Registry | Azure Container Registry (ACR) |
 | Cloud Hosting | Azure Container Apps |
-| Database | Azure Database for MySQL Flexible Server |
+| Database | Azure SQL Database (`insighterp_db`) with per-service schemas |
 | Auth | JWT Bearer tokens (HMAC-SHA256) |
 | Azure Auth | OIDC (OpenID Connect) — passwordless |

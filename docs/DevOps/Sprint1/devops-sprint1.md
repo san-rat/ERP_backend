@@ -164,7 +164,7 @@ The CD (Continuous Deployment) pipeline takes what CI verified and actually ship
 Step 1: Checkout code
         ↓
 Step 2: Apply database migrations
-        Run auth_db SQL migration scripts against Azure MySQL
+        Run auth schema T-SQL migration scripts against Azure SQL
         (Only AuthService has a DB right now)
         ↓
 Step 3: Login to Azure Container Registry (ACR)
@@ -210,12 +210,12 @@ In the pipeline, they're referenced as `${{ secrets.SECRET_NAME }}` — GitHub r
 | `AZURE_CLIENT_ID` | ID of the Azure Managed Identity (for OIDC) |
 | `AZURE_TENANT_ID` | Azure directory/tenant ID |
 | `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
-| `AZ_MYSQL_HOST` | Azure MySQL database hostname |
-| `AZ_MYSQL_DB` | Database name (`auth_db`) |
-| `AZ_MYSQL_MIGRATOR_USER` | DB user for running migrations |
-| `AZ_MYSQL_MIGRATOR_PASSWORD` | Password for migration user |
+| `AZURE_SQL_SERVER` | Azure SQL Server hostname |
+| `AZURE_SQL_DATABASE` | Database name (`insighterp_db`) |
+| `AZURE_SQL_USER` | SQL user for running migrations |
+| `AZURE_SQL_PASSWORD` | Password for the migration user |
 | `AUTH_SERVICE_URL` | Public URL of the AuthService (for smoke test) |
-| `AUTH_DB_CONNECTION_STRING` | Full MySQL connection string for AuthService at runtime |
+| `AUTH_DB_CONNECTION_STRING_AZURE` | Full SQL Server connection string for AuthService at runtime |
 
 ---
 
@@ -330,7 +330,7 @@ All future requests include: Authorization: Bearer <token>
 2. **CD blocked by CI** — CD should only run if CI (tests) passes first.
 3. **Smoke test through gateway** — Test `/auth/health` via the gateway URL, not just directly.
 4. **Production pipeline** — A separate `cd-prod.yml` for the `main` branch deploying to a production environment.
-5. **Database-backed AuthService** — Currently users are stored in memory (lost on restart). Need to persist to MySQL.
+5. **Database-backed AuthService** — Now uses SQL Server / Azure SQL. Next step is extending the same persistence pattern to the remaining services.
 6. **DB connections for other services** — CustomerService, OrderService, etc. will need their own DB connection strings.
 7. **Build caching** — Cache Docker layers to cut build time by ~60%.
 

@@ -196,7 +196,7 @@ The other 6 internal services remain at `minReplicas: 0` — they only cold-star
 ## Problem 7 — AuthService DB Connection String Not Set
 
 ### What happened
-The AuthService was running, but its `/db-check` endpoint was returning 500 errors when tested manually — it couldn't connect to the Azure MySQL database.
+The AuthService was running, but its `/db-check` endpoint was returning 500 errors when tested manually — it couldn't connect to the Azure SQL database.
 
 ### Why it happened
 The Container App was deployed with the Docker image, but the **runtime connection string** (how to connect to the database) was never configured on the Container App. The Dockerfile doesn't contain DB passwords — those must be injected at runtime for security reasons.
