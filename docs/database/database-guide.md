@@ -54,8 +54,24 @@ That guide covers:
 - starting the SQL Server container
 - creating `insighterp_db`
 - applying all local schema migrations in dependency order
+- restoring demo seed data for `auth`, `customer`, `product`, and `order`
 - connecting with Azure Data Studio
 - configuring `AuthService`
+
+Fresh local resets now seed these auth accounts for testing:
+
+| Username | Password | Email | Role |
+|---|---|---|---|
+| `admin` | `Admin@123` | `admin@insighterp.local` | `ADMIN` |
+| `testuser` | `Admin@123` | `testuser@insighterp.local` | `USER` |
+| `manager` | `Admin@123` | `manager@insighterp.local` | `MANAGER` |
+
+Current seed migration files:
+
+- [005_seed_demo_users.sql](/mnt/c/Users/User/Desktop/coding/projects/2026/ERP_backend/schemas/auth/migrations/005_seed_demo_users.sql)
+- [002_seed_customers.sql](/mnt/c/Users/User/Desktop/coding/projects/2026/ERP_backend/schemas/customer/migrations/002_seed_customers.sql)
+- [002_seed_products.sql](/mnt/c/Users/User/Desktop/coding/projects/2026/ERP_backend/schemas/product/migrations/002_seed_products.sql)
+- [002_seed_order_domain_data.sql](/mnt/c/Users/User/Desktop/coding/projects/2026/ERP_backend/schemas/order/migrations/002_seed_order_domain_data.sql)
 
 ## Azure CI/CD
 

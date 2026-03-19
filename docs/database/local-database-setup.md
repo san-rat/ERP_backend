@@ -39,6 +39,8 @@ The script is idempotent:
 
 This keeps the local setup aligned with the same SQL Server migration flow used in CI/CD, while avoiding extra developer machine setup.
 
+Because `auth`, `customer`, `product`, and `order` now include seed migrations, a fresh local reset also restores demo accounts and sample business data automatically.
+
 ## Current Schema Mapping
 
 The folder name and the SQL schema name usually match. The current exception is:
@@ -65,6 +67,24 @@ It should contain:
 
 `ApiGateway` does not need a database connection string for this setup.
 
+## Seeded Demo Data
+
+A fresh local reset seeds these local auth accounts:
+
+| Username | Password | Email | Role |
+|---|---|---|---|
+| `admin` | `Admin@123` | `admin@insighterp.local` | `ADMIN` |
+| `testuser` | `Admin@123` | `testuser@insighterp.local` | `USER` |
+| `manager` | `Admin@123` | `manager@insighterp.local` | `MANAGER` |
+
+Other sample data restored by the seed migrations:
+
+- `dbo.customers`: 10 rows
+- `dbo.products`: 11 rows
+- `dbo.orders`: 17 rows
+- `dbo.order_items`: 27 rows
+- `dbo.returns`: 4 rows
+
 ## Connect With Azure Data Studio
 
 Use these values:
@@ -84,8 +104,17 @@ SELECT * FROM customer.schema_migrations ORDER BY applied_at;
 SELECT * FROM product.schema_migrations ORDER BY applied_at;
 SELECT * FROM [order].schema_migrations ORDER BY applied_at;
 SELECT * FROM ml.schema_migrations ORDER BY applied_at;
-SELECT username, email, is_active FROM auth.users;
-SELECT role_name FROM auth.roles;
+SELECT username, email, is_active FROM auth.users ORDER BY username;
+SELECT u.username, r.role_name
+FROM auth.user_roles ur
+JOIN auth.users u ON ur.user_id = u.id
+JOIN auth.roles r ON ur.role_id = r.id
+ORDER BY u.username, r.role_name;
+SELECT COUNT(*) AS customer_count FROM dbo.customers;
+SELECT COUNT(*) AS product_count FROM dbo.products;
+SELECT COUNT(*) AS order_count FROM dbo.orders;
+SELECT COUNT(*) AS order_item_count FROM dbo.order_items;
+SELECT COUNT(*) AS return_count FROM dbo.returns;
 ```
 
 ## Query The Database From The Terminal
@@ -104,8 +133,12 @@ SELECT * FROM customer.schema_migrations ORDER BY applied_at;
 SELECT * FROM product.schema_migrations ORDER BY applied_at;
 SELECT * FROM [order].schema_migrations ORDER BY applied_at;
 SELECT * FROM ml.schema_migrations ORDER BY applied_at;
-SELECT username, email, is_active FROM auth.users;
-SELECT * FROM auth.roles;
+SELECT username, email, is_active FROM auth.users ORDER BY username;
+SELECT u.username, r.role_name
+FROM auth.user_roles ur
+JOIN auth.users u ON ur.user_id = u.id
+JOIN auth.roles r ON ur.role_id = r.id
+ORDER BY u.username, r.role_name;
 GO
 ```
 
