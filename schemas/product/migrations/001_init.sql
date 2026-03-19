@@ -10,7 +10,3 @@ CREATE TABLE dbo.products (
     created_at DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
     updated_at DATETIME2 NOT NULL DEFAULT GETUTCDATE()
 );
- 
--- Indexes for product service
-CREATE INDEX idx_products_category ON dbo.products(category_id);
-CREATE INDEX idx_products_sku ON dbo.products(sku);

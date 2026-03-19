@@ -8,7 +8,4 @@ CREATE TABLE dbo.customers (
     created_at DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
     updated_at DATETIME2 NOT NULL DEFAULT GETUTCDATE()
 );
- 
--- Indexes for customer service
-CREATE INDEX idx_customers_email ON dbo.customers(email);
-CREATE INDEX idx_customers_created ON dbo.customers(created_at);
+

@@ -2,7 +2,7 @@
 
 This is the recommended local database flow for `InsightERP`.
 
-It uses the repo's Dockerized SQL Server instance, creates `insighterp_db` if needed, and applies the `auth` schema migrations without requiring `sqlcmd` or `bash` on your Windows machine.
+It uses the repo's Dockerized SQL Server instance, creates `insighterp_db` if needed, and applies all discovered `schemas/*/migrations` folders in dependency order without requiring `sqlcmd` or `bash` on your Windows machine.
 
 ## Prerequisite
 
@@ -21,7 +21,8 @@ The script is idempotent:
 - it starts `erp-sqlserver-local` if needed
 - it waits for SQL Server to be ready
 - it creates `insighterp_db` only if it does not already exist
-- it applies only migrations that are not yet recorded in `auth.schema_migrations`
+- it applies only migrations that are not yet recorded in each schema's `schema_migrations` table
+- it skips empty or whitespace-only `.sql` files with a reminder and does not record them
 - it does not wipe the Docker volume
 
 ## What The Script Does
@@ -31,11 +32,22 @@ The script is idempotent:
 1. Runs `docker compose up -d sqlserver`.
 2. Waits until `sqlcmd` inside the container can connect successfully.
 3. Ensures the local database `insighterp_db` exists.
-4. Copies `scripts/apply_sqlserver_migrations.sh` and `schemas/auth/migrations` into a temporary workspace inside the container.
-5. Executes the existing migration runner inside the container, targeting `schemas/auth/migrations`.
-6. Prints the local `AuthService` connection string when setup is complete.
+4. Discovers all `schemas/<name>/migrations` folders, then runs them in this default order: `auth`, `customer`, `product`, `order`, `prediction`, `analytics`.
+5. Copies `scripts/apply_sqlserver_migrations.sh` and the repo `schemas/` folder into a temporary workspace inside the container.
+6. Executes the existing migration runner once per migrations folder.
+7. Prints a migration summary and the local `AuthService` connection string when setup is complete.
 
 This keeps the local setup aligned with the same SQL Server migration flow used in CI/CD, while avoiding extra developer machine setup.
+
+Because `auth`, `customer`, `product`, and `order` now include seed migrations, a fresh local reset also restores demo accounts and sample business data automatically.
+
+## Current Schema Mapping
+
+The folder name and the SQL schema name usually match. The current exception is:
+
+- `schemas/prediction/migrations` is tracked in `ml.schema_migrations`, because the migration creates `ml.*` objects.
+
+The current `analytics` placeholder migration file is empty. The setup script will print a reminder for it, skip it, and continue without error.
 
 ## Service Configuration
 
@@ -55,6 +67,24 @@ It should contain:
 
 `ApiGateway` does not need a database connection string for this setup.
 
+## Seeded Demo Data
+
+A fresh local reset seeds these local auth accounts:
+
+| Username | Password | Email | Role |
+|---|---|---|---|
+| `admin` | `Admin@123` | `admin@insighterp.local` | `ADMIN` |
+| `testuser` | `Admin@123` | `testuser@insighterp.local` | `USER` |
+| `manager` | `Admin@123` | `manager@insighterp.local` | `MANAGER` |
+
+Other sample data restored by the seed migrations:
+
+- `dbo.customers`: 10 rows
+- `dbo.products`: 11 rows
+- `dbo.orders`: 17 rows
+- `dbo.order_items`: 27 rows
+- `dbo.returns`: 4 rows
+
 ## Connect With Azure Data Studio
 
 Use these values:
@@ -70,8 +100,21 @@ Useful verification queries:
 
 ```sql
 SELECT * FROM auth.schema_migrations ORDER BY applied_at;
-SELECT username, email, is_active FROM auth.users;
-SELECT role_name FROM auth.roles;
+SELECT * FROM customer.schema_migrations ORDER BY applied_at;
+SELECT * FROM product.schema_migrations ORDER BY applied_at;
+SELECT * FROM [order].schema_migrations ORDER BY applied_at;
+SELECT * FROM ml.schema_migrations ORDER BY applied_at;
+SELECT username, email, is_active FROM auth.users ORDER BY username;
+SELECT u.username, r.role_name
+FROM auth.user_roles ur
+JOIN auth.users u ON ur.user_id = u.id
+JOIN auth.roles r ON ur.role_id = r.id
+ORDER BY u.username, r.role_name;
+SELECT COUNT(*) AS customer_count FROM dbo.customers;
+SELECT COUNT(*) AS product_count FROM dbo.products;
+SELECT COUNT(*) AS order_count FROM dbo.orders;
+SELECT COUNT(*) AS order_item_count FROM dbo.order_items;
+SELECT COUNT(*) AS return_count FROM dbo.returns;
 ```
 
 ## Query The Database From The Terminal
@@ -86,8 +129,16 @@ Once connected, you can run queries like:
 
 ```sql
 SELECT * FROM auth.schema_migrations ORDER BY applied_at;
-SELECT username, email, is_active FROM auth.users;
-SELECT * FROM auth.roles;
+SELECT * FROM customer.schema_migrations ORDER BY applied_at;
+SELECT * FROM product.schema_migrations ORDER BY applied_at;
+SELECT * FROM [order].schema_migrations ORDER BY applied_at;
+SELECT * FROM ml.schema_migrations ORDER BY applied_at;
+SELECT username, email, is_active FROM auth.users ORDER BY username;
+SELECT u.username, r.role_name
+FROM auth.user_roles ur
+JOIN auth.users u ON ur.user_id = u.id
+JOIN auth.roles r ON ur.role_id = r.id
+ORDER BY u.username, r.role_name;
 GO
 ```
 
@@ -102,6 +153,12 @@ You can run the setup script again at any time:
 ```
 
 Already applied migrations are skipped.
+
+If you want to run only a subset of migrations, you can pass one or more folders explicitly:
+
+```powershell
+.\scripts\setup-local-db.ps1 -MigrationsPath schemas/auth/migrations,schemas/product/migrations
+```
 
 ## Full Reset
 
