@@ -278,3 +278,28 @@ docker-compose up -d
 - [ ] Docker build layer caching — reduce build time by ~60%
 - [ ] Deployment notifications (Slack/Teams on success/failure)
 - [ ] CORS — update ApiGateway to allow specific Vercel domain instead of `AllowAnyOrigin`
+
+---
+
+### 19) SQL Server Local Database Migration & Seed Refactor (March 19, 2026)
+- Added a SQL Server-first local database setup flow through `scripts/setup-local-db.ps1`.
+- Local setup now discovers and applies all `schemas/*/migrations` folders in dependency order.
+- `schemas/prediction/migrations` is tracked under `ml.schema_migrations`.
+- Empty analytics migration placeholders are skipped safely and are not recorded as applied.
+- Extracted demo data from `scripts/setup-working.ps1` into real migration files:
+  - `schemas/auth/migrations/005_seed_demo_users.sql`
+  - `schemas/customer/migrations/002_seed_customers.sql`
+  - `schemas/product/migrations/002_seed_products.sql`
+  - `schemas/order/migrations/002_seed_order_domain_data.sql`
+- Fresh local resets now restore:
+  - auth users: `admin`, `testuser`, `manager`
+  - `dbo.customers`: 10 rows
+  - `dbo.products`: 11 rows
+  - `dbo.orders`: 17 rows
+  - `dbo.order_items`: 27 rows
+  - `dbo.returns`: 4 rows
+- Local auth test credentials:
+  - `admin / Admin@123 / admin@insighterp.local / ADMIN`
+  - `testuser / Admin@123 / testuser@insighterp.local / USER`
+  - `manager / Admin@123 / manager@insighterp.local / MANAGER`
+- This update supersedes the earlier local MySQL-based dev database note in this file.
