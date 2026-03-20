@@ -1,4 +1,4 @@
-namespace SalesForecasting.Models
+namespace ForecastService.Models
 {
     public class SalesData
     {
