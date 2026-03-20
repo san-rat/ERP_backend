@@ -42,6 +42,10 @@ jobs:
           # Add mssql-tools to PATH
           export PATH="$PATH:/opt/mssql-tools18/bin"
           bash ./scripts/apply_sqlserver_migrations.sh schemas/auth/migrations
+          bash ./scripts/apply_sqlserver_migrations.sh schemas/customer/migrations
+          bash ./scripts/apply_sqlserver_migrations.sh schemas/product/migrations
+          bash ./scripts/apply_sqlserver_migrations.sh schemas/order/migrations
+          bash ./scripts/apply_sqlserver_migrations.sh schemas/prediction/migrations ml
 
       - name: Docker login to ACR
         run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
@@ -120,6 +124,21 @@ jobs:
             --name authservice-dev \
             --resource-group erp-rg \
             --set-env-vars "ConnectionStrings__AuthDb=secretref:auth-db-conn"
+
+      - name: Configure PredictionService DB connection string
+        env:
+          PREDICTION_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting ConnectionStrings__ChurnDb secret on predictionservice-dev..."
+          az containerapp secret set \
+            --name predictionservice-dev \
+            --resource-group erp-rg \
+            --secrets "prediction-db-conn=$PREDICTION_DB_CONN"
+
+          az containerapp update \
+            --name predictionservice-dev \
+            --resource-group erp-rg \
+            --set-env-vars "ConnectionStrings__ChurnDb=secretref:prediction-db-conn"
 
       - name: Smoke test — AuthService health check
         run: |
