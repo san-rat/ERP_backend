@@ -1,4 +1,4 @@
-namespace SalesForecasting.Services
+namespace ForecastService.Services
 {
     public class TimeSeriesAnalyzer : ITimeSeriesAnalyzer
     {
