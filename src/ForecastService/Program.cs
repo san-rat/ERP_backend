@@ -1,5 +1,5 @@
-using SalesForecasting.Services;
-using SalesForecasting.Repositories;
+using ForecastService.Services;
+using ForecastService.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
