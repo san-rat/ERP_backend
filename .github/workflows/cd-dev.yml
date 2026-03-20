@@ -135,6 +135,21 @@ jobs:
             --resource-group erp-rg \
             --set-env-vars "ConnectionStrings__AuthDb=secretref:auth-db-conn"
 
+      - name: Configure PredictionService DB connection string
+        env:
+          PREDICTION_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting ConnectionStrings__ChurnDb secret on predictionservice-dev..."
+          az containerapp secret set \
+            --name predictionservice-dev \
+            --resource-group erp-rg \
+            --secrets "prediction-db-conn=$PREDICTION_DB_CONN"
+
+          az containerapp update \
+            --name predictionservice-dev \
+            --resource-group erp-rg \
+            --set-env-vars "ConnectionStrings__ChurnDb=secretref:prediction-db-conn"
+
       - name: Smoke test — AuthService health check
         run: |
           echo "Waiting 30s for new revision to become active..."

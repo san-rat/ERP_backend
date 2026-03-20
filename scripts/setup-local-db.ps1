@@ -3,7 +3,7 @@ param(
     [string]$DatabaseName = "insighterp_db",
     [string]$SaPassword = "LocalDev_Password123!",
     [string[]]$MigrationsPath = @(),
-    [int]$StartupTimeoutSeconds = 90
+    [int]$StartupTimeoutSeconds = 180
 )
 
 $ErrorActionPreference = "Stop"
@@ -65,8 +65,15 @@ function Test-SqlServerReady {
         [string[]]$SqlCmdCandidates
     )
 
+    # First, verify the container is actually running
+    $containerRunning = & docker inspect -f "{{.State.Running}}" $Container 2>&1
+    if ($containerRunning -ne "true") {
+        return $null
+    }
+
     foreach ($candidate in $SqlCmdCandidates) {
-        & docker exec $Container $candidate -S localhost -U sa -P $Password -C -Q "SET NOCOUNT ON; SELECT 1;" > $null 2>&1
+        # Use -l (login timeout) flag with increased timeout (default is 30, use 10 for retries)
+        & docker exec $Container $candidate -S localhost -U sa -P $Password -C -l 10 -Q "SET NOCOUNT ON; SELECT 1;" > $null 2>&1
         if ($LASTEXITCODE -eq 0) {
             return $candidate
         }
@@ -227,16 +234,24 @@ $sqlCmdCandidates = @(
 )
 
 Write-Step "Waiting for SQL Server to accept connections"
+Write-Host "  Allowing initial engine startup time (30 seconds)..." -ForegroundColor DarkGray
+Start-Sleep -Seconds 30
+
 $deadline = (Get-Date).AddSeconds($StartupTimeoutSeconds)
 $sqlCmdPath = $null
+$attemptCount = 0
 
 while ((Get-Date) -lt $deadline) {
+    $attemptCount++
     $sqlCmdPath = Test-SqlServerReady -Container $ContainerName -Password $SaPassword -SqlCmdCandidates $sqlCmdCandidates
     if ($sqlCmdPath) {
+        Write-Host "  SQL Server is ready! (attempt $attemptCount)" -ForegroundColor Green
         break
     }
 
-    Start-Sleep -Seconds 2
+    $secondsRemaining = [math]::Max(0, ($deadline - (Get-Date)).TotalSeconds)
+    Write-Host "  Attempt $attemptCount failed. Retrying... ($([math]::Round($secondsRemaining))s remaining)" -ForegroundColor DarkGray
+    Start-Sleep -Seconds 3
 }
 
 if (-not $sqlCmdPath) {
