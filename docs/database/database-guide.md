@@ -4,6 +4,8 @@ This guide covers the database model, migration flow, and Azure deployment setup
 
 For the local Docker developer workflow, use [local-database-setup.md](/mnt/c/Users/User/Desktop/coding/projects/2026/ERP_backend/docs/database/local-database-setup.md).
 
+For the rationale behind using versioned migration files instead of editing one full SQL dump, use [migration-workflow.md](/mnt/c/Users/User/Desktop/coding/projects/2026/ERP_backend/docs/database/migration-workflow.md).
+
 ## Database Model
 
 InsightERP uses a single SQL Server database, `insighterp_db`, with per-service schemas.
