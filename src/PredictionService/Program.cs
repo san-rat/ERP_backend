@@ -23,7 +23,7 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo 
     { 
-        Title = "Churn Prediction API (Single Database)", 
+        Title = "Churn Prediction API", 
         Description = "ML-based churn prediction"
     });
 });
