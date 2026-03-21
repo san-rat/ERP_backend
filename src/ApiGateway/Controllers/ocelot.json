@@ -1,298 +1,53 @@
 {
   "Routes": [
     {
-      "UpstreamPathTemplate": "/api/gateway/{everything}",
-      "DownstreamPathTemplate": "/api/gateway/{everything}",
+      "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5000
-        }
-      ],
-      "Key": "gateway-passthrough"
-    },
-    {
+      "DownstreamHostAndPorts": [ { "Host": "AuthService", "Port": 8080 } ],
       "UpstreamPathTemplate": "/api/auth/{everything}",
-      "DownstreamPathTemplate": "/api/auth/{everything}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5001
-        }
-      ],
-      "Key": "auth-service"
+      "UpstreamHttpMethod": [ "Get", "Post", "Put", "Delete", "Patch" ]
     },
     {
+      "DownstreamPathTemplate": "/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "CustomerService", "Port": 8080 } ],
       "UpstreamPathTemplate": "/api/customers/{everything}",
-      "DownstreamPathTemplate": "/api/customers/{everything}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5002
-        }
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "Key": "customer-service"
+      "UpstreamHttpMethod": [ "Get", "Post", "Put", "Delete", "Patch" ]
     },
     {
+      "DownstreamPathTemplate": "/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "OrderService", "Port": 8080 } ],
       "UpstreamPathTemplate": "/api/orders/{everything}",
-      "DownstreamPathTemplate": "/api/orders/{everything}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5003
-        }
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "Key": "order-service"
+      "UpstreamHttpMethod": [ "Get", "Post", "Put", "Delete", "Patch" ]
     },
     {
+      "DownstreamPathTemplate": "/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "ProductService", "Port": 8080 } ],
       "UpstreamPathTemplate": "/api/products/{everything}",
-      "DownstreamPathTemplate": "/api/products/{everything}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5004
-        }
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "Key": "product-service"
+      "UpstreamHttpMethod": [ "Get", "Post", "Put", "Delete", "Patch" ]
     },
     {
-      "UpstreamPathTemplate": "/api/ml/forecast/{everything}",
-      "DownstreamPathTemplate": "/api/ml/forecast/{everything}",
+      "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5005
-        }
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "Key": "forecast-service"
+      "DownstreamHostAndPorts": [ { "Host": "ForecastService", "Port": 8080 } ],
+      "UpstreamPathTemplate": "/api/forecast/{everything}",
+      "UpstreamHttpMethod": [ "Get", "Post", "Put", "Delete", "Patch" ]
     },
     {
-      "UpstreamPathTemplate": "/api/ml/churn/{everything}",
-      "DownstreamPathTemplate": "/api/ml/{everything}",
+      "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5006
-        }
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "Key": "prediction-churn"
+      "DownstreamHostAndPorts": [ { "Host": "PredictionService", "Port": 8080 } ],
+      "UpstreamPathTemplate": "/api/predictions/{everything}",
+      "UpstreamHttpMethod": [ "Get", "Post", "Put", "Delete", "Patch" ]
     },
     {
-      "UpstreamPathTemplate": "/api/ml/segmentation/{everything}",
-      "DownstreamPathTemplate": "/api/ml/{everything}",
+      "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5006
-        }
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "Key": "prediction-segmentation"
-    },
-    {
-      "UpstreamPathTemplate": "/api/dashboard/{everything}",
-      "DownstreamPathTemplate": "/api/dashboard/{everything}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5007
-        }
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "Key": "analytics-service"
-    },
-    {
-      "UpstreamPathTemplate": "/api/reports/{everything}",
-      "DownstreamPathTemplate": "/api/reports/{everything}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5008
-        }
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "Key": "report-service"
-    },
-    {
-      "UpstreamPathTemplate": "/api/chatbot/{everything}",
-      "DownstreamPathTemplate": "/api/chatbot/{everything}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5009
-        }
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "Key": "chatbot-service"
-    },
-    {
-      "UpstreamPathTemplate": "/api/notifications/{everything}",
-      "DownstreamPathTemplate": "/api/notifications/{everything}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5010
-        }
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "Key": "notification-service"
-    },
-    {
-      "UpstreamPathTemplate": "/prediction/health",
-      "DownstreamPathTemplate": "/health",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5006
-        }
-      ],
-      "Key": "prediction-health"
-    },
-    {
-      "UpstreamPathTemplate": "/auth/health",
-      "DownstreamPathTemplate": "/health",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5001
-        }
-      ],
-      "Key": "auth-health"
-    },
-    {
-      "UpstreamPathTemplate": "/customer/health",
-      "DownstreamPathTemplate": "/health",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5002
-        }
-      ],
-      "Key": "customer-health"
-    },
-    {
-      "UpstreamPathTemplate": "/order/health",
-      "DownstreamPathTemplate": "/health",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5003
-        }
-      ],
-      "Key": "order-health"
-    },
-    {
-      "UpstreamPathTemplate": "/product/health",
-      "DownstreamPathTemplate": "/health",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5004
-        }
-      ],
-      "Key": "product-health"
-    },
-    {
-      "UpstreamPathTemplate": "/forecast/health",
-      "DownstreamPathTemplate": "/health",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5005
-        }
-      ],
-      "Key": "forecast-health"
-    },
-    {
-      "UpstreamPathTemplate": "/analytics/health",
-      "DownstreamPathTemplate": "/health",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5007
-        }
-      ],
-      "Key": "analytics-health"
-    },
-    {
-      "UpstreamPathTemplate": "/report/health",
-      "DownstreamPathTemplate": "/health",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5008
-        }
-      ],
-      "Key": "report-health"
-    },
-    {
-      "UpstreamPathTemplate": "/chatbot/health",
-      "DownstreamPathTemplate": "/health",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5009
-        }
-      ],
-      "Key": "chatbot-health"
-    },
-    {
-      "UpstreamPathTemplate": "/notification/health",
-      "DownstreamPathTemplate": "/health",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5010
-        }
-      ],
-      "Key": "notification-health"
+      "DownstreamHostAndPorts": [ { "Host": "AnalyticsService", "Port": 8080 } ],
+      "UpstreamPathTemplate": "/api/analytics/{everything}",
+      "UpstreamHttpMethod": [ "Get", "Post", "Put", "Delete", "Patch" ]
     }
   ],
   "GlobalConfiguration": {

@@ -5,11 +5,10 @@ using System.Reflection;
 namespace ApiGateway.Controllers
 {
     /// <summary>
-    /// API Gateway Health and Information Endpoints - PUBLIC (No JWT required)
+    /// API Gateway Health and Information Endpoints
     /// </summary>
+    [Route("[controller]")]
     [ApiController]
-    [Route("api/[controller]")]
-    [AllowAnonymous]  // ✅ All gateway endpoints are public
     public class GatewayController : ControllerBase
     {
         private readonly ILogger<GatewayController> _logger;
@@ -20,6 +19,7 @@ namespace ApiGateway.Controllers
         }
 
         /// <summary>Returns 200 OK when gateway is healthy. No JWT required.</summary>
+        [AllowAnonymous]
         [HttpGet("health")]
         [HttpHead("health")]
         public IActionResult Health()
@@ -37,6 +37,7 @@ namespace ApiGateway.Controllers
         }
 
         /// <summary>Returns gateway info, features and registered routes. No JWT required.</summary>
+        [AllowAnonymous]
         [HttpGet("info")]
         public IActionResult GetInfo()
         {
@@ -77,6 +78,7 @@ namespace ApiGateway.Controllers
         }
 
         /// <summary>Returns all statically registered downstream services. No JWT required.</summary>
+        [AllowAnonymous]
         [HttpGet("services")]
         public IActionResult GetServices()
         {
@@ -104,16 +106,16 @@ namespace ApiGateway.Controllers
         }
 
         /// <summary>Returns gateway route table. No JWT required.</summary>
+        [AllowAnonymous]
         [HttpGet("routes")]
         public IActionResult GetRoutes()
         {
             _logger.LogInformation("Routes info requested");
             return Ok(new
             {
-                totalRoutes = 21,
+                totalRoutes = 20,
                 routes = new object[]
                 {
-                    new { upstream = "/api/gateway/*",          downstream = "GatewayController:5000",      auth = false },
                     new { upstream = "/api/auth/*",             downstream = "AuthService:5001",            auth = false },
                     new { upstream = "/api/customers/*",        downstream = "CustomerService:5002",        auth = true  },
                     new { upstream = "/api/orders/*",           downstream = "OrderService:5003",           auth = true  },
@@ -142,12 +144,14 @@ namespace ApiGateway.Controllers
         }
 
         /// <summary>Kubernetes liveness probe. No JWT required.</summary>
+        [AllowAnonymous]
         [HttpGet("live")]
         [HttpHead("live")]
         public IActionResult IsAlive() =>
             Ok(new { status = "alive", timestamp = DateTime.UtcNow });
 
         /// <summary>Kubernetes readiness probe. No JWT required.</summary>
+        [AllowAnonymous]
         [HttpGet("ready")]
         [HttpHead("ready")]
         public IActionResult IsReady() =>

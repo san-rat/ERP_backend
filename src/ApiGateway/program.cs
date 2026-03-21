@@ -21,24 +21,25 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
+
     builder.Host.UseSerilog();
 
     // ── Configuration ─────────────────────────────────────────────────────────
     builder.Configuration
         .SetBasePath(builder.Environment.ContentRootPath)
-        .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
-        .AddJsonFile("ocelot.json", optional: false, reloadOnChange: true)
-        .AddJsonFile($"ocelot.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+        .AddJsonFile("appsettings.json",                                          optional: false, reloadOnChange: true)
+        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json",   optional: true)
+        .AddJsonFile("ocelot.json",                                               optional: false, reloadOnChange: true)
+        .AddJsonFile($"ocelot.{builder.Environment.EnvironmentName}.json",        optional: true,  reloadOnChange: true)
         .AddEnvironmentVariables();
 
     // ── JWT settings ──────────────────────────────────────────────────────────
-    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
-                    ?? builder.Configuration["JwtSettings:SecretKey"]
-                    ?? "your-super-secret-key-change-in-production-at-least-32-chars!!";
+    var jwtSecret   = Environment.GetEnvironmentVariable("JWT_SECRET")
+                      ?? builder.Configuration["JwtSettings:SecretKey"]
+                      ?? "your-super-secret-key-change-in-production-at-least-32-chars!!";
 
-    var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "InsightERP";
-    var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "InsightERP-Users";
+    var jwtIssuer   = builder.Configuration["JwtSettings:Issuer"]   ?? "InsightERP";
+    var jwtAudience = builder.Configuration["JwtSettings:Audience"]  ?? "InsightERP-Users";
 
     // ── JWT Bearer — validates tokens produced by AuthService ─────────────────
     builder.Services
@@ -46,26 +47,27 @@ try
         .AddJwtBearer("Bearer", options =>
         {
             options.RequireHttpsMetadata = false;
-            options.SaveToken = true;
+            options.SaveToken            = true;
 
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+                IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
 
-                ValidateIssuer = true,
-                ValidIssuer = jwtIssuer,
+                ValidateIssuer           = true,
+                ValidIssuer              = jwtIssuer,
 
-                ValidateAudience = true,
-                ValidAudience = jwtAudience,
+                ValidateAudience         = true,
+                ValidAudience            = jwtAudience,
 
-                ValidateLifetime = true,
-                ClockSkew = TimeSpan.Zero
+                ValidateLifetime         = true,
+                ClockSkew                = TimeSpan.Zero
             };
         });
 
-    // ── Authorization ─────────────────────────────────────────────────────────
+    // Fallback policy
     builder.Services.AddAuthorization();
+
 
     // ── Ocelot ────────────────────────────────────────────────────────────────
     builder.Services.AddOcelot(builder.Configuration);
@@ -78,11 +80,11 @@ try
         c.SwaggerDoc("v1", new OpenApiInfo { Title = "InsightERP API Gateway", Version = "v1" });
         c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
         {
-            Description = "JWT Bearer token",
-            Name = "Authorization",
-            In = ParameterLocation.Header,
-            Type = SecuritySchemeType.Http,
-            Scheme = "bearer",
+            Description  = "JWT Bearer token",
+            Name         = "Authorization",
+            In           = ParameterLocation.Header,
+            Type         = SecuritySchemeType.Http,
+            Scheme       = "bearer",
             BearerFormat = "JWT"
         });
         c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -98,21 +100,6 @@ try
     builder.Services.AddHealthChecks();
 
     var app = builder.Build();
-
-    // ════════════════════════════════════════════════════════════════════════════════
-    // ═══ LOWERCASE ROUTING MIDDLEWARE ═══
-    // Converts all incoming URLs to lowercase before routing
-    // This allows [Route("api/[controller]")] to work with lowercase URLs
-    // ════════════════════════════════════════════════════════════════════════════════
-    app.Use(async (context, next) =>
-    {
-        var path = context.Request.Path.Value;
-        if (!string.IsNullOrEmpty(path) && path != "/" && path != path.ToLowerInvariant())
-        {
-            context.Request.Path = path.ToLowerInvariant();
-        }
-        await next();
-    });
 
     app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "InsightERP API Gateway v1"));
