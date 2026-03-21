@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using ProductService.Controllers;
 using ProductService.DTOs;
+using ProductService.Common;
 using ProductService.Interfaces;
 using Xunit;
 
@@ -45,7 +46,7 @@ namespace ProductService.Tests
             var dto = new CreateProductDto { Sku = "CONTROLLER-TEST", Price = 99 };
             var responseDto = new ProductResponseDto { Id = Guid.NewGuid(), Sku = "CONTROLLER-TEST" };
 
-            _managerMock.Setup(m => m.CreateProductAsync(dto, userId))
+            _managerMock.Setup(m => m.CreateProductAsync(userId, dto))
                 .ReturnsAsync(responseDto);
 
             // Act
@@ -59,17 +60,20 @@ namespace ProductService.Tests
         }
 
         [Fact]
-        public async Task SearchProductsByName_CallsManagerCorrectly_ReturnsOk()
+        public async Task GetProducts_CallsManagerCorrectly_ReturnsOk()
         {
             // Arrange
+            var userId = Guid.NewGuid();
+            SetupUserClaims(userId);
+
             var term = "laptop";
             var mockResponse = new PaginatedResponse<ProductResponseDto>();
 
-            _managerMock.Setup(m => m.GetProductsAsync(1, 100, null, term))
+            _managerMock.Setup(m => m.GetProductsAsync(userId, 1, 10, null, term))
                 .ReturnsAsync(mockResponse);
 
             // Act
-            var result = await _controller.SearchProductsByName(term);
+            var result = await _controller.GetProducts(1, 10, null, term);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -80,9 +84,12 @@ namespace ProductService.Tests
         public async Task DeductStock_InsufficientStock_ReturnsConflict()
         {
             // Arrange
+            var userId = Guid.NewGuid();
+            SetupUserClaims(userId);
+
             var dto = new DeductStockDto { ProductId = Guid.NewGuid(), OrderId = Guid.NewGuid(), Quantity = 5 };
             
-            _managerMock.Setup(m => m.DeductStockAsync(dto))
+            _managerMock.Setup(m => m.DeductStockAsync(userId, dto))
                 .ReturnsAsync((false, "Insufficient stock."));
 
             // Act
@@ -97,9 +104,12 @@ namespace ProductService.Tests
         public async Task DeductStock_SufficientStock_ReturnsOk()
         {
             // Arrange
+            var userId = Guid.NewGuid();
+            SetupUserClaims(userId);
+
             var dto = new DeductStockDto { ProductId = Guid.NewGuid(), OrderId = Guid.NewGuid(), Quantity = 5 };
             
-            _managerMock.Setup(m => m.DeductStockAsync(dto))
+            _managerMock.Setup(m => m.DeductStockAsync(userId, dto))
                 .ReturnsAsync((true, "Successful"));
 
             // Act

@@ -46,16 +46,15 @@ namespace ProductService.Tests
             var userId = Guid.NewGuid();
 
             // Act
-            var result = await _manager.CreateProductAsync(dto, userId);
+            var result = await _manager.CreateProductAsync(userId, dto);
 
             // Assert
             Assert.NotNull(result);
             Assert.Equal("SKU-TEST-01", result.Sku);
             Assert.Equal(50, result.QuantityAvailable);
-            Assert.Equal(userId, result.CreatedByUserId);
 
             var dbProduct = await _context.Products.Include(p => p.Inventory).SingleAsync();
-            Assert.Equal(50, dbProduct.QuantityAvailable);
+            Assert.Equal(userId, dbProduct.CreatedByUserId);
             Assert.NotNull(dbProduct.Inventory);
             Assert.Equal(50, dbProduct.Inventory.QuantityAvailable);
             Assert.Equal(10, dbProduct.Inventory.LowStockThreshold);
@@ -65,21 +64,21 @@ namespace ProductService.Tests
         public async Task GetProductsAsync_PaginationAndFiltering_WorksCorrectly()
         {
             // Arrange
+            var userId = Guid.NewGuid();
             var c = new Category { Name = "Toys" };
             _context.Categories.Add(c);
-            _context.Products.Add(new Product { Sku = "1", Name = "Apple", Category = c, Price = 1m });
-            _context.Products.Add(new Product { Sku = "2", Name = "Banana", Category = c, Price = 1m });
-            _context.Products.Add(new Product { Sku = "3", Name = "Axe", Price = 1m });
+            _context.Products.Add(new Product { Sku = "1", Name = "Apple", Category = c, Price = 1m, CreatedByUserId = userId });
+            _context.Products.Add(new Product { Sku = "2", Name = "Banana", Category = c, Price = 1m, CreatedByUserId = userId });
+            _context.Products.Add(new Product { Sku = "3", Name = "Axe", Price = 1m, CreatedByUserId = Guid.NewGuid() }); // Different user
             await _context.SaveChangesAsync();
 
             // Act
-            var resultNameFilter = await _manager.GetProductsAsync(1, 10, null, "a");
-            var resultCategoryFilter = await _manager.GetProductsAsync(1, 10, "Toys", null);
+            var resultNameFilter = await _manager.GetProductsAsync(userId, 1, 10, null, "a");
+            var resultCategoryFilter = await _manager.GetProductsAsync(userId, 1, 10, "Toys", null);
 
             // Assert
-            Assert.Equal(3, resultNameFilter.TotalRecords);
-
-            Assert.Equal(2, resultCategoryFilter.TotalRecords); // Only Apple, Banana are in "Toys"
+            Assert.Equal(2, resultNameFilter.TotalRecords); // Apple, Banana have "a" and belong to User
+            Assert.Equal(2, resultCategoryFilter.TotalRecords);
         }
 
         [Fact]
@@ -87,7 +86,8 @@ namespace ProductService.Tests
         {
             // Arrange
             var pId = Guid.NewGuid();
-            _context.Products.Add(new Product { Id = pId, Sku = "1", Name = "P1", Price = 10, QuantityAvailable = 5 });
+            var userId = Guid.NewGuid();
+            _context.Products.Add(new Product { Id = pId, Sku = "1", Name = "P1", Price = 10, CreatedByUserId = userId });
             _context.Inventory.Add(new Inventory { ProductId = pId, QuantityAvailable = 5 });
             await _context.SaveChangesAsync();
 
@@ -99,7 +99,7 @@ namespace ProductService.Tests
             };
 
             // Act
-            var result = await _manager.DeductStockAsync(dto);
+            var result = await _manager.DeductStockAsync(userId, dto);
 
             // Assert
             Assert.False(result.Success);
@@ -111,7 +111,8 @@ namespace ProductService.Tests
         {
             // Arrange
             var pId = Guid.NewGuid();
-            _context.Products.Add(new Product { Id = pId, Sku = "1", Name = "P1", Price = 10, QuantityAvailable = 20 });
+            var userId = Guid.NewGuid();
+            _context.Products.Add(new Product { Id = pId, Sku = "1", Name = "P1", Price = 10, CreatedByUserId = userId });
             _context.Inventory.Add(new Inventory { ProductId = pId, QuantityAvailable = 20 });
             await _context.SaveChangesAsync();
 
@@ -123,15 +124,13 @@ namespace ProductService.Tests
             };
 
             // Act
-            var result = await _manager.DeductStockAsync(dto);
+            var result = await _manager.DeductStockAsync(userId, dto);
 
             // Assert
             Assert.True(result.Success);
             
-            var dbProduct = await _context.Products.FindAsync(pId);
             var dbInventory = await _context.Inventory.SingleAsync();
 
-            Assert.Equal(15, dbProduct!.QuantityAvailable);
             Assert.Equal(15, dbInventory.QuantityAvailable);
             Assert.Single(_context.InventoryReservations);
         }
