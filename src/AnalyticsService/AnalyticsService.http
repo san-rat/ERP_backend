@@ -1,0 +1,19 @@
+@AnalyticsService_HostAddress = http://localhost:5007
+@gateway = http://localhost:5000
+
+###
+# Direct — health check (no token)
+GET {{AnalyticsService_HostAddress}}/health
+Accept: application/json
+
+###
+# Via Gateway — analytics health (no token)
+GET {{gateway}}/analytics/health
+Accept: application/json
+
+###
+# Via Gateway — dashboard endpoints (requires Bearer token)
+GET {{gateway}}/api/dashboard/
+Accept: application/json
+
+###

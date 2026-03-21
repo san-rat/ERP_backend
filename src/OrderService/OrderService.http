@@ -1,0 +1,19 @@
+@OrderService_HostAddress = http://localhost:5003
+@gateway = http://localhost:5000
+
+###
+# Direct — health check (no token)
+GET {{OrderService_HostAddress}}/health
+Accept: application/json
+
+###
+# Via Gateway — order health (no token)
+GET {{gateway}}/order/health
+Accept: application/json
+
+###
+# Via Gateway — order endpoints (requires Bearer token)
+GET {{gateway}}/api/orders/
+Accept: application/json
+
+###

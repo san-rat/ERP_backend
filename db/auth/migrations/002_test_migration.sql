@@ -1,5 +1,0 @@
-CREATE TABLE IF NOT EXISTS migration_test (
-  id INT NOT NULL AUTO_INCREMENT,
-  note VARCHAR(50),
-  PRIMARY KEY (id)
-);

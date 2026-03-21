@@ -1,0 +1,19 @@
+@CustomerService_HostAddress = http://localhost:5002
+@gateway = http://localhost:5000
+
+###
+# Direct — health check (no token)
+GET {{CustomerService_HostAddress}}/health
+Accept: application/json
+
+###
+# Via Gateway — customer health (no token)
+GET {{gateway}}/customer/health
+Accept: application/json
+
+###
+# Via Gateway — customer endpoints (requires Bearer token)
+GET {{gateway}}/api/customers/
+Accept: application/json
+
+###

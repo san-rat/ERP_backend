@@ -1,0 +1,29 @@
+@PredictionService_HostAddress = http://localhost:5006
+@gateway = http://localhost:5000
+
+###
+# Direct — health check (no token)
+GET {{PredictionService_HostAddress}}/health
+Accept: application/json
+
+###
+# Direct — DB check (no token)
+GET {{PredictionService_HostAddress}}/db-check
+Accept: application/json
+
+###
+# Via Gateway — prediction health (no token)
+GET {{gateway}}/prediction/health
+Accept: application/json
+
+###
+# Via Gateway — churn prediction (requires Bearer token)
+GET {{gateway}}/api/ml/churn/
+Accept: application/json
+
+###
+# Via Gateway — segmentation (requires Bearer token)
+GET {{gateway}}/api/ml/segmentation/
+Accept: application/json
+
+###

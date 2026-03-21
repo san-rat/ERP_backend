@@ -1,0 +1,19 @@
+@ForecastService_HostAddress = http://localhost:5005
+@gateway = http://localhost:5000
+
+###
+# Direct — health check (no token)
+GET {{ForecastService_HostAddress}}/health
+Accept: application/json
+
+###
+# Via Gateway — forecast health (no token)
+GET {{gateway}}/forecast/health
+Accept: application/json
+
+###
+# Via Gateway — forecast endpoints (requires Bearer token)
+GET {{gateway}}/api/ml/forecast/
+Accept: application/json
+
+###

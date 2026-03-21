@@ -1,414 +1,257 @@
-# AuthService Microservice Structure Guide
+# AuthService — Structure Guide
 
-This document explains **every folder and file** in the `src/AuthService` microservice structure (as shown in the screenshot).  
-For each item, it covers:
+This document explains **every folder and file** in the `src/AuthService` microservice as it currently exists.
 
-- **Why it exists / why it’s needed**
-- **What type of files go inside**
-- **How it affects the microservice and the overall system**
-
----
-
-## Overview: What this structure achieves
-
-This structure follows a **layered / clean architecture** style:
-
-- **Controllers** handle HTTP (API endpoints)
-- **Application** holds use-cases and business logic (service layer)
-- **Domain** holds core business models (entities/value objects)
-- **Infrastructure** contains external integrations (DB, JWT, external services)
-- **Common** holds shared utilities (errors, middleware, response wrappers)
-
-✅ This makes the service:
-- easy to maintain
-- easy to test
-- easier to scale to more microservices
-- safer to change without breaking other parts
+For each item you'll find:
+- **What it is** (plainly explained)
+- **What's inside it**
+- **Why it matters**
 
 ---
 
-# Folder-by-folder Breakdown
+## Current Folder Structure
 
-## `Application/`
-### Why it’s needed
-The **Application layer** contains the **service’s use-cases** (what the microservice actually *does*).  
-It prevents your Controllers from becoming messy and prevents Infrastructure (DB/JWT) logic from mixing with business rules.
-
-### What goes here
-This layer typically contains:
-- request/response models
-- service logic (login/register)
-- interfaces (contracts) for repositories and token providers
-- validation rules
-
-### Effect on microservice/system
-- Keeps business rules consistent and reusable
-- Allows swapping Infrastructure (DB implementation, token provider) without rewriting Controllers
-- Improves testability (unit tests can target Application without real DB)
-
----
-
-### `Application/DTOs/`
-**DTO = Data Transfer Object**
-
-#### Why needed
-Controllers should not directly expose internal entities like `User`. DTOs help control what enters/exits your API.
-
-#### What files go here
-- `LoginRequest.cs`
-- `LoginResponse.cs`
-- `RegisterRequest.cs`
-- `TokenResponse.cs`
-- `UserDto.cs`
-
-#### Effect
-- Prevents security mistakes (like returning password hashes)
-- Makes API contracts clear for frontend/mobile clients and other services
-- Helps version API responses safely
-
+```
+src/AuthService/
+├── Controllers/
+│   ├── AuthController.cs       ← Login + Register endpoints
+│   └── HealthController.cs     ← Health check + DB check endpoints
+├── Models/
+│   ├── AuthResponse.cs         ← What the API returns after login/register
+│   ├── LoginRequest.cs         ← What the API expects for login
+│   └── RegisterRequest.cs      ← What the API expects for register
+├── Services/
+│   └── JwtTokenService.cs      ← Generates JWT tokens
+├── Properties/
+│   └── launchSettings.json     ← Local development port config
+├── Program.cs                  ← Service startup and configuration
+├── Dockerfile                  ← Instructions to build the Docker container
+├── appsettings.json            ← Base configuration
+├── appsettings.Development.json← Local dev overrides
+├── AuthService.csproj          ← Project definition (packages, target framework)
+└── AuthService.http            ← Quick HTTP test file for developers
+```
 
 ---
 
-### `Application/Interfaces/`
-#### Why needed
-This defines **contracts** the Application depends on, not implementations.
+## Folder Breakdown
 
-#### What files go here
-- `IAuthService.cs`
-- `IUserRepository.cs`
-- `IJwtTokenService.cs`
-- `IPasswordHasher.cs`
+### `Controllers/`
 
-#### Effect
-- Enables dependency injection properly
-- Allows mocking in tests
-- Lets you switch from Dapper → EF Core (or MySQL → Postgres) with minimal code changes
+**What it is:** The "front desk" of the service. Every HTTP request from the frontend or the API Gateway hits a Controller first.
 
----
+**Files inside:**
 
-### `Application/Services/`
-#### Why needed
-Holds the actual **use-case logic**.
+#### `AuthController.cs`
+Handles the main auth endpoints:
+- `POST /api/auth/login` — accepts `{ username, password }`, returns a JWT token
+- `POST /api/auth/register` — accepts `{ username, password, role }`, creates a user, returns a JWT
 
-#### What files go here
-- `AuthService.cs` (login/register logic)
-- `PasswordService.cs`
-- `TokenService.cs` (sometimes sits here, sometimes in Infrastructure)
+The controller now uses `IUserRepository` to read and write users in the `auth` schema of SQL Server / Azure SQL.
 
-#### Effect
-- Controllers stay thin and clean
-- Core business logic is centralized and consistent
-- Makes future enhancements easier (refresh tokens, MFA, lockouts)
+Registration validates role rules, checks username uniqueness in the database, hashes the password with SHA-256, stores the user in `auth.users`, and issues a JWT immediately.
+
+Login looks up the user in the database, compares the stored password hash, checks `is_active`, and issues a JWT on success.
+
+#### `HealthController.cs`
+Two diagnostic endpoints:
+- `GET /health` — returns `"AuthService is running..."`. Public, no token required. Used by the CI/CD smoke test.
+- `GET /db-check` — connects to the configured SQL Server / Azure SQL database and verifies connectivity. Requires a valid JWT token (`[Authorize]`).
 
 ---
 
-### `Application/Validators/`
-#### Why needed
-Prevents bad inputs from reaching your service logic/DB.
+### `Models/`
 
-#### What files go here
-- `LoginRequestValidator.cs`
-- `RegisterRequestValidator.cs`
+**What it is:** Simple C# classes that define the **shape of data** going in and out of the API. Think of them as forms — the API expects data in a specific format.
 
-Typically used with FluentValidation or custom rules.
+**Files inside:**
 
-#### Effect
-- Reduces runtime errors
-- Improves API reliability
-- Improves security (input sanitization, rule enforcement)
+#### `LoginRequest.cs`
+Defines what a login request body must look like:
+```json
+{
+  "username": "admin",
+  "password": "Admin@123"
+}
+```
 
----
+#### `RegisterRequest.cs`
+Defines what a registration request body must look like:
+```json
+{
+  "username": "john",
+  "password": "Secret@123",
+  "role": "Employee"
+}
+```
+Role is optional — defaults to `Employee` if not provided. `Admin` cannot be self-assigned.
 
-## `bin/`
-#### Why it exists
-Auto-generated output folder created when you build/run the project.
-
-#### What’s inside
-- compiled assemblies (`.dll`)
-- runtime files
-
-#### Effect
-No effect on source logic. Not manually edited.
-
-✅ Should be ignored by git.
-
----
-
-## `Common/`
-### Why it’s needed
-This is a shared internal toolbox **within the microservice**.  
-It keeps cross-cutting concerns out of Controllers/Application.
-
-### What goes here
-- exception handling helpers
-- middleware
-- standard response wrappers
-- helper utilities
-
-### Effect
-- consistent error handling
-- consistent API response format
-- less duplication across controllers
+#### `AuthResponse.cs`
+Defines what the API gives back after a successful login or register:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "expiresAt": "2026-03-03T10:00:00Z"
+}
+```
+The frontend stores this token and attaches it to all future requests.
 
 ---
 
-## `Controllers/`
-### Why it’s needed
-Controllers define the **HTTP API endpoints** of the AuthService.
+### `Services/`
 
-### What goes here
-- `AuthController.cs`
-- `HealthController.cs`
+**What it is:** The business logic layer — code that does actual work, not just receieving/sending HTTP.
 
-### Effect
-- This is the “entry point” for clients (frontend, other services)
-- Clean separation: Controllers only handle HTTP and call Application layer
+**Files inside:**
 
-✅ In a microservice system, other services should interact with AuthService through these endpoints (or via token validation).
+#### `JwtTokenService.cs`
+Responsible for **generating JWT (JSON Web Token)** tokens.
 
----
+When a user logs in successfully, this service creates a signed token containing:
+- The user's ID
+- The user's username
+- The user's role (Admin/Manager/Employee)
+- An expiry time
 
-## `Domain/`
-### Why it’s needed
-The Domain layer contains the **core business model** — your service’s “truth”.
+The token is signed with a secret key (`JWT_SECRET`). Without the secret key, someone cannot forge a valid token.
 
-### What goes here
-- entities representing data + rules
-
-### Effect
-- prevents leaking DB-specific models everywhere
-- supports future growth (roles, permissions, refresh tokens, sessions)
+The API Gateway uses the same secret key to **verify** that a token is genuine before allowing requests through.
 
 ---
 
-### `Domain/Entities/`
-#### Why needed
-Represents core objects in Auth domain.
+### `Properties/`
 
-#### What files go here
-- `User.cs`
-- `Role.cs`
-- `UserRole.cs`
-- `RefreshToken.cs`
+**What it is:** Project settings for local development.
 
-#### Effect
-- makes your domain stable even if DB structure changes
-- avoids writing business rules inside controllers/SQL
+**Files inside:**
 
----
-
-### `Domain/ValueObjects/`
-#### Why needed
-Value objects represent “validated” domain concepts.
-
-#### What files go here
-- `Email.cs`
-- `Password.cs` (not raw password, but rules/format)
-- `JwtClaims.cs`
-
-#### Effect
-- makes domain safer (less invalid states)
-- reduces repeated validation logic
-
-⚠️ Optional (but good for maturity)
+#### `launchSettings.json`
+Tells `dotnet run` which port to use when you start the service locally.
+```json
+"applicationUrl": "http://localhost:5001"
+```
+> This file is only used during local development. In Azure, the `ASPNETCORE_URLS=http://+:8080` environment variable from the Dockerfile takes over.
 
 ---
 
-## `Infrastructure/`
-### Why it’s needed
-Infrastructure is where your system touches the outside world:
-- DB
-- JWT signing
-- external APIs
-- caching services
+## File Breakdown
 
-### What goes here
-- repository implementations
-- database connection and configuration
-- JWT token generation logic
+### `Program.cs`
+The **startup file** — the very first thing that runs when the service starts.
 
-### Effect
-- Application stays clean and independent
-- Infrastructure can change without affecting business rules
-- Supports real deployment environments (local docker DB, Azure MySQL)
+It wires everything together:
+1. Reads the `JWT_SECRET` from env var (or falls back to `appsettings.json`)
+2. Registers JWT Bearer authentication
+3. Sets up CORS to allow the frontend to call the API
+4. Enables Swagger UI
+5. Configures the middleware pipeline (auth → routing → controllers)
+
+If anything is misconfigured here, the entire service won't work.
 
 ---
 
-### `Infrastructure/Persistence/`
-#### Why needed
-All database-related components live here.
+### `Dockerfile`
+**Instructions for building the Docker container.** Uses a two-stage build:
 
-#### What files go here
-- `AuthDbContext.cs` (if EF Core)
-OR
-- `DbConnectionFactory.cs` (if Dapper/MySqlConnector)
-- `UserRepository.cs`
-- `RefreshTokenRepository.cs`
-- `Migrations/` (optional if using EF or SQL scripts)
+**Stage 1 — Build** (uses the heavy .NET SDK image):
+```dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+RUN dotnet publish -c Release -o /app/publish
+```
+Compiles the application.
 
-#### Effect
-- clean separation between “business logic” and “data storage”
-- DB changes don’t pollute controllers
+**Stage 2 — Runtime** (uses the lightweight ASP.NET runtime image):
+```dockerfile
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+```
+Takes only the compiled output — final image is lean and production-ready.
 
----
-
-### `Infrastructure/Security/`
-#### Why needed
-Security-related implementations such as JWT token creation and password hashing.
-
-#### What files go here
-- `JwtTokenService.cs`
-- `PasswordHasher.cs`
-- `TokenValidationParametersFactory.cs`
-
-#### Effect
-- keeps auth implementation consistent and reusable
-- makes it easier to upgrade security (rotation, stronger hashing, claims changes)
+The `ASPNETCORE_URLS=http://+:8080` line tells the app to listen on port 8080, which Azure Container Apps expects.
 
 ---
 
-## `obj/`
-#### Why it exists
-Auto-generated build temp folder.
-
-#### What’s inside
-- intermediate build files
-- generated metadata
-
-#### Effect
-No effect on source logic.
-
-✅ Must be ignored by git.
-
----
-
-## `Properties/`
-### Why it exists
-Project configuration and local run settings.
-
-### What goes here
-Most commonly:
-- `launchSettings.json` (local debugging ports, environment values)
-
-### Effect
-- Helps local development and debugging
-- Does not affect Azure deployment unless you copy values manually
+### `appsettings.json`
+Default configuration that applies in all environments:
+```json
+{
+  "JwtSettings": {
+    "SecretKey": "...",
+    "Issuer": "InsightERP",
+    "Audience": "InsightERP-Users"
+  },
+  "ConnectionStrings": {
+    "AuthDb": ""    ← overridden by Azure secret at runtime
+  }
+}
+```
 
 ---
 
-# File-by-file Breakdown
+### `appsettings.Development.json`
+Local development overrides. Values here override `appsettings.json` when running with `dotnet run` (environment = `Development`).
 
-## `.dockerignore`
-### Why needed
-Prevents Docker from copying unnecessary files into the image.
-
-### Common ignored files
-- `bin/`
-- `obj/`
-- `.git/`
-
-### Effect
-- smaller images
-- faster builds
-- avoids leaking dev artifacts into production containers
+Useful for: local database connection strings, more verbose logging, etc.
 
 ---
 
-## `appsettings.json`
-### Why needed
-Base configuration for the service.
+### `AuthService.csproj`
+The **.NET project file** — defines what this project is and what it depends on.
 
-### Common config values
-- Logging
-- JWT settings
-- feature flags
+Key contents:
+- `<TargetFramework>net9.0</TargetFramework>` — uses .NET 9
+- Package references: JWT bearer, `Microsoft.Data.SqlClient`, Swagger, etc.
 
-### Effect
-- central place for config defaults
-- allows environment overrides
+Without this file, the project cannot be built or run.
 
 ---
 
-## `appsettings.Development.json`
-### Why needed
-Development-only overrides.
+### `AuthService.http`
+A developer convenience file — contains sample HTTP requests you can run directly in VS Code (with REST Client extension) or Visual Studio.
 
-### Common values
-- local DB connection string
-- verbose logging
+Example:
+```http
+POST http://localhost:5001/api/auth/login
+Content-Type: application/json
 
-### Effect
-- separates local settings from production
-- avoids hardcoding dev-only values into production config
+{ "username": "admin", "password": "Admin@123" }
+```
 
----
-
-## `AuthService.csproj`
-### Why needed
-Defines the .NET project.
-
-### Contains
-- target framework
-- package references (JWT, MySqlConnector, EF Core, etc.)
-- build config
-
-### Effect
-Without this, the service cannot build.
+No effect on production. Just for quick manual testing during development.
 
 ---
 
-## `AuthService.http`
-### Why needed
-Developer testing file (VS Code / Visual Studio).
+## How an Auth Request Flows Through This Structure
 
-### Contains
-- sample HTTP requests for your endpoints
-
-### Effect
-No effect on production. Helps fast testing.
-
----
-
-## `Dockerfile`
-### Why needed
-Defines how to containerize AuthService.
-
-### Contains
-- build step
-- publish step
-- runtime step
-- port exposure
-
-### Effect
-Required for:
-- CI/CD build + push to ACR
-- Azure Container App deployment
+```
+Frontend sends: POST /api/auth/login { username, password }
+        ↓
+[ApiGateway] routes /api/auth/* to AuthService
+        ↓
+[AuthController.cs] receives the request
+        ↓
+Reads LoginRequest model (validates shape)
+        ↓
+Looks up user via IUserRepository in auth.users
+        ↓
+Compares SHA-256 hash of password
+        ↓
+[JwtTokenService.cs] generates a signed JWT token
+        ↓
+[AuthResponse.cs] is returned with the token
+        ↓
+Frontend stores the token, uses it for all future requests
+```
 
 ---
 
-## `Program.cs`
-### Why needed
-The service startup file.
+## Sprint 2 Planned Improvements
 
-### Contains
-- dependency injection registrations
-- middleware pipeline setup (routing, auth, swagger)
-- controller mapping (`app.MapControllers()`)
-
-### Effect
-- connects Controllers + Application + Infrastructure together
-- without correct wiring, API endpoints won’t work
-- controls how requests flow through your service
-
----
-
-# What this structure enables in a Microservice System
-
-This structure helps you achieve:
-- **independent deployability** (each microservice stands alone)
-- **clean CI/CD** (build/test/deploy without coupling)
-- **consistent patterns** (every future service can copy this template)
-- **safer scaling** (you can add roles, refresh tokens, MFA later)
-
-In short:
-✅ This becomes your “gold standard template” for other microservices (DeliveryService, UserService, etc.)
+| Current (Sprint 1) | Planned (Sprint 2) |
+|---|---|
+| Users stored in SQL Server / Azure SQL | Stronger auth management and broader schema rollout |
+| SHA-256 password hashing | BCrypt or Argon2 hashing |
+| No refresh tokens | Refresh token support |
+| Database-seeded or manually registered users | Better user lifecycle management |
+| `ConnectionStrings__AuthDb` drives the repository layer | Expand the same DB pattern to additional services |

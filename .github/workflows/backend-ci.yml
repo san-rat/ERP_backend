@@ -1,4 +1,4 @@
-name: Docs Structure Check
+name: CI — Build, Test & Docker Validate
 
 on:
   push:
@@ -7,31 +7,40 @@ on:
     branches: [ "main", "dev" ]
 
 jobs:
-  check-docs:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Verify required Structure
+      - name: Verify required structure
         run: |
           test -f README.md
           test -d docs
           echo "Project structure is valid"
 
-      - name: Setup .NET 10
+      - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: '9.0.x'
 
       - name: Restore dependencies
         run: dotnet restore ERP_Backend.slnx
 
       - name: Build solution
         run: dotnet build ERP_Backend.slnx --no-restore --configuration Release
-        
-      - name: Docker Build AuthService
-        run: docker build -t authservice:ci -f src/AuthService/Dockerfile src/AuthService
 
-    
+      - name: Run tests
+        run: dotnet test ERP_Backend.slnx --no-build --configuration Release --verbosity normal
+
+      - name: Docker Build all services
+        run: |
+          docker build -t apigateway:ci        -f src/ApiGateway/Dockerfile        src/ApiGateway
+          docker build -t analyticsservice:ci  -f src/AnalyticsService/Dockerfile  src/AnalyticsService
+          docker build -t authservice:ci       -f src/AuthService/Dockerfile       src/AuthService
+          docker build -t customerservice:ci   -f src/CustomerService/Dockerfile   src/CustomerService
+          docker build -t forecastservice:ci   -f src/ForecastService/Dockerfile   src/ForecastService
+          docker build -t orderservice:ci      -f src/OrderService/Dockerfile      src/OrderService
+          docker build -t predictionservice:ci -f src/PredictionService/Dockerfile src/PredictionService
+          docker build -t productservice:ci    -f src/ProductService/Dockerfile    src/ProductService

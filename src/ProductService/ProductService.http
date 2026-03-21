@@ -1,0 +1,19 @@
+@ProductService_HostAddress = http://localhost:5004
+@gateway = http://localhost:5000
+
+###
+# Direct — health check (no token)
+GET {{ProductService_HostAddress}}/health
+Accept: application/json
+
+###
+# Via Gateway — product health (no token)
+GET {{gateway}}/product/health
+Accept: application/json
+
+###
+# Via Gateway — product endpoints (requires Bearer token)
+GET {{gateway}}/api/products/
+Accept: application/json
+
+###

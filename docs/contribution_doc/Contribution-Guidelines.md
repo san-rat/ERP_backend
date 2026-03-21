@@ -1,24 +1,24 @@
 # Contribution Guidelines
 
-Welcome to the **Meridian** Backend repository! To keep our codebase clean, readable, and easy to maintain, please follow these standard contribution guidelines when working on the project.
+Welcome to the **InsightERP** Backend repository! To keep our codebase clean, readable, and easy to maintain, please follow these standard contribution guidelines when working on the project.
 
 ## 🌱 Branching Strategy
 
 We follow a standard feature-branch workflow. 
 *   **`main`**: Production-ready code.
-*   **`develop`**: Active development branch. All feature branches merge here first.
+*   **`dev`**: Active development branch. All feature branches merge here first.
 
-Both `main` and `develop` are protected branches and **require at least 2 Pull Request approval** before merging. Direct pushes to these branches are blocked by repository rules.
+Both `main` and `dev` are protected branches and **require at least 1 Pull Request approval** before merging. Direct pushes to these branches are blocked by repository rules. For `dev` its 1 approval for `main` its 2
 
 ### Naming Conventions
 
-Always create your branch off from `develop`. Your branch name **must** include the issue key (e.g., `MER-123`) from your tracker to tightly couple the code to the ticket.
+Always create your branch off from `dev`. Your branch name **must** include the issue key (e.g., `IMS-123`).
 
 **Format:** `<issue-key>-<short-description>`
 
-*   `MER-26-add-github-actions-pipeline`
-*   `MER-42-fix-jwt-auth-timeout`
-*   `MER-10-setup-project-scaffold`
+*   `IMS-26-add-github-actions-pipeline`
+*   `IMS-42-fix-jwt-auth-timeout`
+*   `IMS-10-setup-project-scaffold`
 
 ## 📝 Commit Messages
 
@@ -35,16 +35,16 @@ We write semantic commit messages so our git history is readable and easily pars
 *   `chore`: Changes to the build process, csproj, or tool configurations
 
 **Example:** 
-`MER-26 feat(DeliveryService): create endpoint for updating delivery status`
+`IMS-26 feat(Gateway): create endpoint for health apis`
 
 ## 🔄 Pull Request Process
 
-1. Create a branch off `develop`.
+1. Create a branch off `dev` (developer) staging branch.
 2. Commit your changes in logical, bite-sized increments using proper commit messages.
-3. Push your branch and open a PR against the `develop` branch.
+3. Push your branch and open a PR against the `dev` branch.
 4. Ensure your code compiles locally (`dotnet build`) without warnings.
 5. Request a review from at least one other team member.
-6. Once approved, squash and merge your branch into `develop`.
+6. Once approved, squash and merge your branch into `dev`.
 
 ---
 

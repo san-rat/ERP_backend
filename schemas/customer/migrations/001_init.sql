@@ -1,0 +1,11 @@
+-- Create customers table
+CREATE TABLE dbo.customers (
+    id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    email NVARCHAR(255) NOT NULL UNIQUE,
+    first_name NVARCHAR(100) NOT NULL,
+    last_name NVARCHAR(100) NOT NULL,
+    phone NVARCHAR(20),
+    created_at DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    updated_at DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+);
+

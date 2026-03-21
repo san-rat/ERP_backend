@@ -1,56 +1,157 @@
-name: CD Dev - Migrate dev - Build & Push AuthService to ACR
+name: CD Dev — Migrate, Build & Push all services, Deploy to Azure
 
 on:
   push:
     branches: [ "dev" ]
 
+# Required for OIDC authentication (passwordless Azure login)
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install mysql client
-        run: sudo apt-get update && sudo apt-get install -y mysql-client
+      - name: Install sqlcmd
+        run: sudo apt-get update && sudo apt-get install -y mssql-tools18 unixodbc-dev
 
       - name: Debug DB env (safe)
         shell: bash
         env:
-          MYSQL_HOST: ${{ secrets.AZ_MYSQL_HOST }}
-          MYSQL_DB: ${{ secrets.AZ_MYSQL_DB }}
-          MYSQL_USER: ${{ secrets.AZ_MYSQL_MIGRATOR_USER }}
+          AZURE_SQL_SERVER: ${{ secrets.AZURE_SQL_SERVER }}
+          AZURE_SQL_DATABASE: ${{ secrets.AZURE_SQL_DATABASE }}
+          AZURE_SQL_USER: ${{ secrets.AZURE_SQL_USER }}
         run: |
-          echo "MYSQL_HOST=$MYSQL_HOST"
-          echo "MYSQL_DB=$MYSQL_DB"
-          echo "MYSQL_USER=$MYSQL_USER"
+          echo "AZURE_SQL_SERVER=$AZURE_SQL_SERVER"
+          echo "AZURE_SQL_DATABASE=$AZURE_SQL_DATABASE"
+          echo "AZURE_SQL_USER=$AZURE_SQL_USER"
 
-      - name: Apply DB migrations (Azure MySQL)
-        shell: bash 
-        env: 
-          MYSQL_HOST: ${{ secrets.AZ_MYSQL_HOST }}
-          MYSQL_DB: ${{ secrets.AZ_MYSQL_DB }}
-          MYSQL_USER: ${{ secrets.AZ_MYSQL_MIGRATOR_USER }}
-          MYSQL_PASSWORD: ${{ secrets.AZ_MYSQL_MIGRATOR_PASSWORD }}
+      - name: Apply DB migrations (Azure SQL)
+        shell: bash
+        env:
+          AZURE_SQL_SERVER: ${{ secrets.AZURE_SQL_SERVER }}
+          AZURE_SQL_DATABASE: ${{ secrets.AZURE_SQL_DATABASE }}
+          AZURE_SQL_USER: ${{ secrets.AZURE_SQL_USER }}
+          AZURE_SQL_PASSWORD: ${{ secrets.AZURE_SQL_PASSWORD }}
         run: |
-          bash ./scripts/apply_migrations.sh db/auth/migrations
+          # Add mssql-tools to PATH
+          export PATH="$PATH:/opt/mssql-tools18/bin"
+
+          TARGETS=(
+            "schemas/auth/migrations:auth"
+            "schemas/customer/migrations:customer"
+            "schemas/product/migrations:product"
+            "schemas/order/migrations:order"
+            "schemas/prediction/migrations:ml"
+            "schemas/analytics/migrations:analytics"
+          )
+
+          for target in "${TARGETS[@]}"; do
+            IFS=':' read -r dir schema <<< "$target"
+            echo ">>> Applying ${dir} to schema ${schema}..."
+            bash ./scripts/apply_sqlserver_migrations.sh "$dir" "$schema"
+          done
 
       - name: Docker login to ACR
         run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
-      - name: Build and push image
+      - name: Build and push all images to ACR
         run: |
-          IMAGE_SHA="${{ secrets.ACR_LOGIN_SERVER }}/authservice:${{ github.sha }}"
-          IMAGE_LATEST="${{ secrets.ACR_LOGIN_SERVER }}/authservice:latest"
+          SERVICES=(apigateway analyticsservice authservice customerservice forecastservice orderservice predictionservice productservice)
+          SRC_DIRS=(ApiGateway AnalyticsService AuthService CustomerService ForecastService OrderService PredictionService ProductService)
 
-          docker build -t "$IMAGE_SHA" -t "$IMAGE_LATEST" -f src/AuthService/Dockerfile src/AuthService
-          docker push "$IMAGE_SHA"
-          docker push "$IMAGE_LATEST"
+          for i in "${!SERVICES[@]}"; do
+            SVC="${SERVICES[$i]}"
+            DIR="${SRC_DIRS[$i]}"
+            IMAGE_SHA="${{ secrets.ACR_LOGIN_SERVER }}/${SVC}:${{ github.sha }}"
+            IMAGE_LATEST="${{ secrets.ACR_LOGIN_SERVER }}/${SVC}:latest"
 
-      - name: Smoke test (health + db-test)
-        run: | 
-          echo "Waiting 20s for Container App revision..."
-          sleep 20
+            echo ">>> Building ${SVC}..."
+            docker build -t "$IMAGE_SHA" -t "$IMAGE_LATEST" -f "src/${DIR}/Dockerfile" "src/${DIR}"
+
+            echo ">>> Pushing ${SVC}..."
+            docker push "$IMAGE_SHA"
+            docker push "$IMAGE_LATEST"
+          done
+
+      - name: Azure Login (OIDC — no password needed)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy all services to Azure Container Apps
+        run: |
+          SERVICES=(apigateway    analyticsservice    authservice    customerservice    forecastservice    orderservice    predictionservice    productservice)
+          APP_NAMES=(apigateway-dev analyticsservice-dev authservice-dev customerservice-dev forecastservice-dev orderservice-dev predictionservice-dev productservice-dev)
+
+          for i in "${!SERVICES[@]}"; do
+            SVC="${SERVICES[$i]}"
+            APP="${APP_NAMES[$i]}"
+            IMAGE="${{ secrets.ACR_LOGIN_SERVER }}/${SVC}:${{ github.sha }}"
+
+            echo ">>> Configuring ACR credentials for ${APP}..."
+            az containerapp registry set \
+              --name "$APP" \
+              --resource-group erp-rg \
+              --server "${{ secrets.ACR_LOGIN_SERVER }}" \
+              --username "${{ secrets.ACR_USERNAME }}" \
+              --password "${{ secrets.ACR_PASSWORD }}"
+
+            echo ">>> Deploying ${APP} with image ${IMAGE}..."
+            az containerapp update \
+              --name "$APP" \
+              --resource-group erp-rg \
+              --image "$IMAGE"
+
+            # Keep the gateway and auth service always warm (minReplicas=1)
+            # so the frontend never hits a cold-start on first load
+            if [[ "$APP" == "apigateway-dev" || "$APP" == "authservice-dev" ]]; then
+              az containerapp update \
+                --name "$APP" \
+                --resource-group erp-rg \
+                --min-replicas 1
+            fi
+          done
+
+      - name: Configure AuthService DB connection string
+        env:
+          AUTH_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting ConnectionStrings__AuthDb secret on authservice-dev..."
+          az containerapp secret set \
+            --name authservice-dev \
+            --resource-group erp-rg \
+            --secrets "auth-db-conn=$AUTH_DB_CONN"
+
+          az containerapp update \
+            --name authservice-dev \
+            --resource-group erp-rg \
+            --set-env-vars "ConnectionStrings__AuthDb=secretref:auth-db-conn"
+
+      - name: Configure PredictionService DB connection string
+        env:
+          PREDICTION_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting ConnectionStrings__ChurnDb secret on predictionservice-dev..."
+          az containerapp secret set \
+            --name predictionservice-dev \
+            --resource-group erp-rg \
+            --secrets "prediction-db-conn=$PREDICTION_DB_CONN"
+
+          az containerapp update \
+            --name predictionservice-dev \
+            --resource-group erp-rg \
+            --set-env-vars "ConnectionStrings__ChurnDb=secretref:prediction-db-conn"
+
+      - name: Smoke test — AuthService health check
+        run: |
+          echo "Waiting 30s for new revision to become active..."
+          sleep 30
           curl -fsS "${{ secrets.AUTH_SERVICE_URL }}/health"
-          curl -fsS "${{ secrets.AUTH_SERVICE_URL }}/db-check"

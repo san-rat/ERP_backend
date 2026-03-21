@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MySql.Data.MySqlClient;
+using Microsoft.Data.SqlClient;
 
 namespace AuthService.Controllers;
 
@@ -15,13 +16,16 @@ public class HealthController : ControllerBase
         _config = config;
     }
 
+    [AllowAnonymous]
     [HttpGet("health")]
     public IActionResult Health()
     {
         return Ok("AuthService is running - and sanuk is testing - dulain is watching.");
     }
 
+    [Authorize]
     [HttpGet("db-check")]
+
     public async Task<IActionResult> DbCheck()
     {
         var cs = _config.GetConnectionString("AuthDb") ?? "";
@@ -29,24 +33,27 @@ public class HealthController : ControllerBase
 
         try
         {
-            await using var conn = new MySqlConnection(cs);
+            await using var conn = new SqlConnection(cs);
             await conn.OpenAsync();
 
-            await using var who = new MySqlCommand("SELECT USER(), CURRENT_USER(), @@hostname;", conn);
+            await using var who = new SqlCommand("SELECT SUSER_SNAME(), CURRENT_USER, @@SERVERNAME, (SELECT COUNT(*) FROM auth.users);", conn);
             await using var reader = await who.ExecuteReaderAsync();
             await reader.ReadAsync();
 
             var user = reader.GetString(0);
             var currentUser = reader.GetString(1);
             var host = reader.GetString(2);
+            var userCount = reader.GetInt32(3);
 
             return Ok(new
             {
                 status = "DB Connected",
+                schema = "auth",
                 usingConn = safe,
                 user,
                 currentUser,
-                host
+                host,
+                userCount
             });
         }
         catch (Exception ex)

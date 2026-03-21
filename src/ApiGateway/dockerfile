@@ -1,0 +1,30 @@
+# ─── Stage 1: Build ────────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+COPY ["ApiGateway.csproj", "./"]
+RUN dotnet restore "ApiGateway.csproj"
+
+COPY . .
+RUN dotnet publish "ApiGateway.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# ─── Stage 2: Runtime ──────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
+WORKDIR /app
+
+# curl for health checks
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /app/publish .
+
+RUN mkdir -p /app/logs
+
+# Azure Container Apps expects the app to listen on 8080
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
+  CMD curl -f http://localhost:8080/gateway/health || exit 1
+
+ENTRYPOINT ["dotnet", "ApiGateway.dll"]
