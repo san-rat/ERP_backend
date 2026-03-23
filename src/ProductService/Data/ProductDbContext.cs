@@ -1,11 +1,4 @@
-<<<<<<< HEAD
 using System;
-=======
-<<<<<<< Updated upstream
-using System;
-=======
->>>>>>> Stashed changes
->>>>>>> a62bde7 (IMS-17: implement core product management logic and DTOs)
 using Microsoft.EntityFrameworkCore;
 using ProductService.Models;
 
@@ -15,18 +8,8 @@ namespace ProductService.Data
     {
         public ProductDbContext(DbContextOptions<ProductDbContext> options) : base(options) { }
 
-<<<<<<< HEAD
         public DbSet<Category> Categories { get; set; } = null!;
         public DbSet<Product> Products { get; set; } = null!;
-=======
-<<<<<<< Updated upstream
-        public DbSet<Category> Categories { get; set; } = null!;
-        public DbSet<Product> Products { get; set; } = null!;
-=======
-        public DbSet<Product> Products { get; set; } = null!;
-        public DbSet<Category> Categories { get; set; } = null!;
->>>>>>> Stashed changes
->>>>>>> a62bde7 (IMS-17: implement core product management logic and DTOs)
         public DbSet<Inventory> Inventory { get; set; } = null!;
         public DbSet<InventoryReservation> InventoryReservations { get; set; } = null!;
         public DbSet<LowStockAlert> LowStockAlerts { get; set; } = null!;
@@ -34,10 +17,6 @@ namespace ProductService.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-<<<<<<< HEAD
-=======
-<<<<<<< Updated upstream
->>>>>>> a62bde7 (IMS-17: implement core product management logic and DTOs)
 
             // Ensure schema alignment
             modelBuilder.Entity<Category>().HasIndex(c => c.Name).IsUnique();
@@ -67,11 +46,6 @@ namespace ProductService.Data
                 new Inventory { Id = Guid.NewGuid(), ProductId = prod1Id, QuantityAvailable = 50, LowStockThreshold = 10 },
                 new Inventory { Id = Guid.NewGuid(), ProductId = prod2Id, QuantityAvailable = 5, LowStockThreshold = 10 } // Below threshold
             );
-<<<<<<< HEAD
-=======
-=======
->>>>>>> Stashed changes
->>>>>>> a62bde7 (IMS-17: implement core product management logic and DTOs)
         }
     }
 }

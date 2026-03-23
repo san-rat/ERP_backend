@@ -7,7 +7,6 @@ using ProductService.Data;
 using ProductService.DTOs;
 using ProductService.Interfaces;
 using ProductService.Models;
-using ProductService.Common;
 
 namespace ProductService.Services
 {
@@ -20,20 +19,17 @@ namespace ProductService.Services
             _context = context;
         }
 
-        // ────────────────────────────────────────────────────────────────────
+        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         //  READ
-        // ────────────────────────────────────────────────────────────────────
+        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
         public async Task<PaginatedResponse<ProductResponseDto>> GetProductsAsync(
-            Guid? userId, int pageNumber, int pageSize, string? categoryName, string? name)
+            int pageNumber, int pageSize, string? categoryName, string? name)
         {
             var query = _context.Products
                 .Include(p => p.Category)
                 .Include(p => p.Inventory)
                 .AsQueryable();
-
-            if (userId.HasValue)
-                query = query.Where(p => p.CreatedByUserId == userId.Value);
 
             if (!string.IsNullOrWhiteSpace(categoryName))
                 query = query.Where(p => p.Category != null && p.Category.Name.ToLower() == categoryName.ToLower());
@@ -59,41 +55,24 @@ namespace ProductService.Services
             };
         }
 
-        public async Task<ProductResponseDto?> GetProductByIdAsync(Guid? userId, Guid id)
+        public async Task<ProductResponseDto?> GetProductByIdAsync(Guid id)
         {
-            var query = _context.Products
+            var p = await _context.Products
                 .Include(p => p.Category)
                 .Include(p => p.Inventory)
-                .AsQueryable();
-
-            if (userId.HasValue)
-                query = query.Where(p => p.CreatedByUserId == userId.Value);
-
-            var p = await query.FirstOrDefaultAsync(p => p.Id == id);
+                .FirstOrDefaultAsync(p => p.Id == id);
 
             return p == null ? null : MapToProductResponse(p);
         }
 
-        // ────────────────────────────────────────────────────────────────────
+        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         //  CREATE
-        // ────────────────────────────────────────────────────────────────────
+        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
-<<<<<<< Updated upstream
         public async Task<ProductResponseDto> CreateProductAsync(CreateProductDto dto, Guid createdByUserId)
-=======
-        public async Task<ProductResponseDto> CreateProductAsync(Guid? userId, CreateProductDto dto)
->>>>>>> Stashed changes
         {
-            // First check if the SKU already exists
-            var existingProduct = await _context.Products.FirstOrDefaultAsync(p => p.Sku == dto.Sku);
-            if (existingProduct != null)
-            {
-                throw new InvalidOperationException($"A product with SKU '{dto.Sku}' already exists.");
-            }
-
             var product = new Product
             {
-<<<<<<< Updated upstream
                 Sku             = dto.Sku,
                 Name            = dto.Name,
                 Description     = dto.Description,
@@ -104,17 +83,6 @@ namespace ProductService.Services
                 UpdatedAt       = DateTime.UtcNow,
                 CreatedByUserId = createdByUserId,
                 QuantityAvailable = dto.InitialStock
-=======
-                Sku         = dto.Sku,
-                Name        = dto.Name,
-                Description = dto.Description,
-                CategoryId  = dto.CategoryId,
-                Price       = dto.Price,
-                IsActive    = dto.IsActive,
-                CreatedAt   = DateTime.UtcNow,
-                UpdatedAt   = DateTime.UtcNow,
-                CreatedByUserId = userId
->>>>>>> Stashed changes
             };
 
             _context.Products.Add(product);
@@ -141,27 +109,16 @@ namespace ProductService.Services
             return MapToProductResponse(product);
         }
 
-        // ────────────────────────────────────────────────────────────────────
+        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         //  UPDATE
-        // ────────────────────────────────────────────────────────────────────
+        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
-        public async Task<ProductResponseDto?> UpdateProductAsync(Guid? userId, Guid id, UpdateProductDto dto)
+        public async Task<ProductResponseDto?> UpdateProductAsync(Guid id, UpdateProductDto dto)
         {
-            var existingProductWithSameSku = await _context.Products.FirstOrDefaultAsync(p => p.Sku == dto.Sku && p.Id != id);
-            if (existingProductWithSameSku != null)
-            {
-                throw new InvalidOperationException($"A product with SKU '{dto.Sku}' already exists.");
-            }
-
-            var query = _context.Products
+            var p = await _context.Products
                 .Include(p => p.Category)
                 .Include(p => p.Inventory)
-                .AsQueryable();
-
-            if (userId.HasValue)
-                query = query.Where(p => p.CreatedByUserId == userId.Value);
-
-            var p = await query.FirstOrDefaultAsync(p => p.Id == id);
+                .FirstOrDefaultAsync(p => p.Id == id);
 
             if (p == null) return null;
 
@@ -188,7 +145,6 @@ namespace ProductService.Services
                     QuantityAvailable = dto.QuantityAvailable,
                     LowStockThreshold = dto.LowStockThreshold
                 };
-                _context.Inventory.Add(p.Inventory);
             }
 
             // Raise low-stock alert if needed
@@ -203,17 +159,13 @@ namespace ProductService.Services
             return MapToProductResponse(p);
         }
 
-        // ────────────────────────────────────────────────────────────────────
+        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         //  DELETE
-        // ────────────────────────────────────────────────────────────────────
+        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
-        public async Task<bool> DeleteProductAsync(Guid? userId, Guid id)
+        public async Task<bool> DeleteProductAsync(Guid id)
         {
-            var query = _context.Products.AsQueryable();
-            if (userId.HasValue)
-                query = query.Where(p => p.CreatedByUserId == userId.Value);
-
-            var product = await query.FirstOrDefaultAsync(p => p.Id == id);
+            var product = await _context.Products.FindAsync(id);
             if (product == null) return false;
 
             _context.Products.Remove(product);
@@ -221,20 +173,15 @@ namespace ProductService.Services
             return true;
         }
 
-        // ────────────────────────────────────────────────────────────────────
+        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         //  INVENTORY / STOCK
-        // ────────────────────────────────────────────────────────────────────
+        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
-        public async Task<IEnumerable<StockResponseDto>> GetStockAsync(Guid? userId)
+        public async Task<IEnumerable<StockResponseDto>> GetStockAsync()
         {
-            var query = _context.Products
+            var stocks = await _context.Products
                 .Include(p => p.Inventory)
-                .Where(p => p.IsActive);
-
-            if (userId.HasValue)
-                query = query.Where(p => p.CreatedByUserId == userId.Value);
-
-            var stocks = await query
+                .Where(p => p.IsActive)
                 .OrderBy(p => p.Name)
                 .Select(p => MapToStockResponse(p))
                 .ToListAsync();
@@ -242,31 +189,18 @@ namespace ProductService.Services
             return stocks;
         }
 
-        public async Task<StockResponseDto?> GetStockByProductIdAsync(Guid? userId, Guid productId)
+        public async Task<StockResponseDto?> GetStockByProductIdAsync(Guid productId)
         {
-            var query = _context.Products
+            var p = await _context.Products
                 .Include(p => p.Inventory)
-                .AsQueryable();
-
-            if (userId.HasValue)
-                query = query.Where(p => p.CreatedByUserId == userId.Value);
-
-            var p = await query.FirstOrDefaultAsync(p => p.Id == productId);
+                .FirstOrDefaultAsync(p => p.Id == productId);
 
             return p == null ? null : MapToStockResponse(p);
         }
 
-        public async Task<(bool Success, string Message)> DeductStockAsync(Guid? userId, DeductStockDto dto)
+        public async Task<(bool Success, string Message)> DeductStockAsync(DeductStockDto dto)
         {
-            var query = _context.Products.AsQueryable();
-            if (userId.HasValue)
-                query = query.Where(p => p.CreatedByUserId == userId.Value);
-
-            var product = await query.FirstOrDefaultAsync(p => p.Id == dto.ProductId);
-            if (product == null)
-                return (false, $"Product {dto.ProductId} not found or you do not have permission.");
-
-            // Load inventory
+            // Load product with inventory in a single round-trip
             var inventory = await _context.Inventory
                 .FirstOrDefaultAsync(i => i.ProductId == dto.ProductId);
 
@@ -305,9 +239,9 @@ namespace ProductService.Services
             return (true, $"Stock deducted successfully. Remaining: {inventory.QuantityAvailable}.");
         }
 
-        // ────────────────────────────────────────────────────────────────────
+        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         //  PRIVATE HELPERS
-        // ────────────────────────────────────────────────────────────────────
+        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
         private async Task EnsureLowStockAlertAsync(Guid productId, int currentQty)
         {

@@ -31,16 +31,11 @@ namespace ProductService.Models
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-<<<<<<< Updated upstream
         /// <summary>The ID of the user who created this product (extracted from the JWT sub claim).</summary>
         public Guid? CreatedByUserId { get; set; }
 
         public int QuantityAvailable { get; set; }
 
-=======
-        public Guid? CreatedByUserId { get; set; }
-
->>>>>>> Stashed changes
         [ForeignKey("CategoryId")]
         public virtual Category? Category { get; set; }
 
