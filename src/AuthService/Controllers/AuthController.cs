@@ -44,7 +44,6 @@ public class AuthController : ControllerBase
     /// Register a new user and receive a JWT immediately (auto-login).
     /// </summary>
     [HttpPost("register")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -112,7 +111,6 @@ public class AuthController : ControllerBase
     /// Authenticate with username + password and receive a JWT.
     /// </summary>
     [HttpPost("login")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
