@@ -150,6 +150,21 @@ jobs:
             --resource-group erp-rg \
             --set-env-vars "ConnectionStrings__ChurnDb=secretref:prediction-db-conn"
 
+      - name: Configure ProductService DB connection string
+        env:
+          PRODUCT_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting ConnectionStrings__DefaultConnection secret on productservice-dev..."
+          az containerapp secret set \
+            --name productservice-dev \
+            --resource-group erp-rg \
+            --secrets "product-db-conn=$PRODUCT_DB_CONN"
+
+          az containerapp update \
+            --name productservice-dev \
+            --resource-group erp-rg \
+            --set-env-vars "ConnectionStrings__DefaultConnection=secretref:product-db-conn"
+
       - name: Smoke test — AuthService health check
         run: |
           echo "Waiting 30s for new revision to become active..."
