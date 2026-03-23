@@ -26,7 +26,7 @@ public class ChurnModelManager
     /// <summary>
     /// Train model using ALL real data from database
     /// </summary>
-    public async Task<ModelTrainingResult> TrainModelWithRealDataAsync()
+    public virtual async Task<ModelTrainingResult> TrainModelWithRealDataAsync()
     {
         try
         {
@@ -122,8 +122,8 @@ public class ChurnModelManager
     /// <summary>
     /// Make prediction using current model
     /// </summary>
-    public (decimal probability, string riskLabel, List<(string, decimal)> featureImportance)
-        PredictChurn(CustomerFeatures features)
+    public virtual (decimal probability, string riskLabel, List<(string, decimal)> featureImportance)
+    PredictChurn(CustomerFeatures features)
     {
         if (_model == null)
             return (0.5m, "UNKNOWN", new List<(string, decimal)>());
