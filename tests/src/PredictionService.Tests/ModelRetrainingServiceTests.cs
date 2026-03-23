@@ -89,9 +89,15 @@ public class ModelRetrainingServiceTests
             Accuracy = 0.85m
         };
 
+        // Setup the mock to return a delayed result to simulate ongoing training
         _mockModelManager
             .Setup(m => m.TrainModelWithRealDataAsync())
-            .ReturnsAsync(trainingResult);
+            .Returns(async () =>
+            {
+                // Simulate a training operation that takes time
+                await Task.Delay(1000);
+                return trainingResult;
+            });
 
         _mockTrainingDataRepository
             .Setup(r => r.SaveTrainingHistoryAsync(It.IsAny<TrainingHistory>()))
@@ -105,16 +111,22 @@ public class ModelRetrainingServiceTests
             .Setup(r => r.SetActiveModelAsync(It.IsAny<Guid>()))
             .ReturnsAsync(true);
 
-        // Start first training
+        // Start first training (don't await yet)
         var task1 = _service.RetrainModelAsync();
 
-        // Try to start second training immediately
+        // Give it a moment to start
+        await Task.Delay(100);
+
+        // Try to start second training immediately (while first is still running)
         var result = await _service.RetrainModelAsync();
 
         // Assert
         Assert.False(result.Success);
         Assert.Equal("IN_PROGRESS", result.Status);
         Assert.Contains("already in progress", result.Message);
+
+        // Clean up - wait for the first task to complete
+        await task1;
     }
 
     [Fact]
