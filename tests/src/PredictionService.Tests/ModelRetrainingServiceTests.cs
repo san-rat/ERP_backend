@@ -4,6 +4,7 @@ using PredictionService.Repositories;
 using PredictionService.Services;
 using PredictionService.ML;
 using Xunit;
+using Microsoft.Extensions.Logging;
 
 namespace PredictionService.Tests.Services;
 

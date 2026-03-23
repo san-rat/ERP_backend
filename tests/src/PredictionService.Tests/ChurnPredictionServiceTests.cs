@@ -4,6 +4,7 @@ using PredictionService.Repositories;
 using PredictionService.Services;
 using PredictionService.ML;
 using Xunit;
+using Microsoft.Extensions.Logging;
 
 namespace PredictionService.Tests.Services;
 
@@ -286,7 +287,7 @@ public class ChurnPredictionServiceTests
             TenureDays = 730,
             ProductDiversity = 8,
             CategoryDiversity = 5,
-            AvgProductsPerOrder = 2.5f,
+            AvgProductsPerOrder = (decimal)2.5f,
             ReturnCount = 2,
             ReturnRate = 0.05m,
             TotalRefunded = 300,

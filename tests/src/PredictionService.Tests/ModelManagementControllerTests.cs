@@ -4,6 +4,7 @@ using PredictionService.Controllers;
 using PredictionService.Models;
 using PredictionService.Services;
 using Xunit;
+using Microsoft.Extensions.Logging;
 
 namespace PredictionService.Tests.Controllers;
 
