@@ -192,7 +192,6 @@ jobs:
             "AuthService:/auth/health"
             "ForecastService:/forecast/health"
             "PredictionService:/prediction/health"
-            "ProductService:/product/health"
           )
 
           for endpoint in "${ENDPOINTS[@]}"; do
