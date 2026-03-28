@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/AdminService/AdminService.csproj" />
     <Project Path="src/AuthService/AuthService.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/src/AdminService.Tests/AdminService.Tests.csproj" />
     <Project Path="tests/src/ApiGateway.Tests/ApiGateway.Tests.csproj" />
     <Project Path="tests/src/AuthService.Tests/AuthService.Tests.csproj" />
   </Folder>

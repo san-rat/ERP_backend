@@ -14,6 +14,7 @@ $services = @(
     @{ Name = "ForecastService";   Port = 5005; Path = "src\ForecastService"   },
     @{ Name = "PredictionService"; Port = 5006; Path = "src\PredictionService" },
     @{ Name = "AnalyticsService";  Port = 5007; Path = "src\AnalyticsService"  },
+    @{ Name = "AdminService";      Port = 5011; Path = "src\AdminService"      },
     @{ Name = "ApiGateway";        Port = 5000; Path = "src\ApiGateway"        }
 )
 
@@ -51,6 +52,7 @@ Write-Host "    http://localhost:5000/auth/health"       -ForegroundColor White
 Write-Host "    http://localhost:5000/customer/health"   -ForegroundColor White
 Write-Host "    http://localhost:5000/order/health"      -ForegroundColor White
 Write-Host "    http://localhost:5000/product/health"    -ForegroundColor White
+Write-Host "    http://localhost:5000/admin/health"      -ForegroundColor White
 Write-Host "    http://localhost:5000/forecast/health"   -ForegroundColor White
 Write-Host "    http://localhost:5000/prediction/health" -ForegroundColor White
 Write-Host "    http://localhost:5000/analytics/health"  -ForegroundColor White
