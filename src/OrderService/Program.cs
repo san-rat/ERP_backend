@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
 using OrderService.Common.Middleware;
 using OrderService.Data;
@@ -22,7 +21,9 @@ builder.Logging.AddConsole();
 // Add DbContext with MySQL
 builder.Services.AddDbContext<OrderDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new Exception("DefaultConnection is missing.");
+
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
 });
 
@@ -33,8 +34,8 @@ builder.Services.AddScoped<IKafkaProducer, KafkaProducer>();
 
 // JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new Exception("JWT Key is missing.");
-var jwtIssuer = builder.Configuration["Jwt:Issuer"];
-var jwtAudience = builder.Configuration["Jwt:Audience"];
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? throw new Exception("JWT Issuer is missing.");
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? throw new Exception("JWT Audience is missing.");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -43,7 +44,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // beginner/demo setup
+    options.RequireHttpsMetadata = false;
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -79,7 +80,6 @@ builder.Services.AddSwaggerGen(options =>
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         Description = "Enter JWT token like: Bearer your_token_here",
-
         Reference = new OpenApiReference
         {
             Id = JwtBearerDefaults.AuthenticationScheme,
@@ -99,7 +99,6 @@ var app = builder.Build();
 // Global error handler
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
-// Swagger
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -108,13 +107,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Authentication and authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Auto-create database on startup for beginner project
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
