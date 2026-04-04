@@ -16,14 +16,12 @@ public class HealthController : ControllerBase
         _config = config;
     }
 
-    [AllowAnonymous]
     [HttpGet("health")]
     public IActionResult Health()
     {
         return Ok("AuthService is running - and sanuk is testing - dulain is watching.");
     }
 
-    [Authorize]
     [HttpGet("db-check")]
 
     public async Task<IActionResult> DbCheck()

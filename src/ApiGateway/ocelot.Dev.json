@@ -1,0 +1,268 @@
+{
+    "Routes": [
+        {
+            "DownstreamPathTemplate": "/api/auth/{everything}",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "authservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/api/auth/{everything}",
+            "UpstreamHttpMethod": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS"
+            ]
+        },
+        {
+            "DownstreamPathTemplate": "/health",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "authservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/auth/health",
+            "UpstreamHttpMethod": [
+                "GET",
+                "HEAD"
+            ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/customers/{everything}",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "customerservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/api/customers/{everything}",
+            "UpstreamHttpMethod": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS"
+            ],
+            "AuthenticationOptions": {
+                "AuthenticationProviderKey": "Bearer"
+            }
+        },
+        {
+            "DownstreamPathTemplate": "/health",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "customerservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/customer/health",
+            "UpstreamHttpMethod": [
+                "GET",
+                "HEAD"
+            ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/orders/{everything}",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "orderservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/api/orders/{everything}",
+            "UpstreamHttpMethod": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS"
+            ],
+            "AuthenticationOptions": {
+                "AuthenticationProviderKey": "Bearer"
+            }
+        },
+        {
+            "DownstreamPathTemplate": "/health",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "orderservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/order/health",
+            "UpstreamHttpMethod": [
+                "GET",
+                "HEAD"
+            ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/products/{everything}",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "productservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/api/products/{everything}",
+            "UpstreamHttpMethod": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS"
+            ],
+            "AuthenticationOptions": {
+                "AuthenticationProviderKey": "Bearer"
+            }
+        },
+        {
+            "DownstreamPathTemplate": "/health",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "productservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/product/health",
+            "UpstreamHttpMethod": [
+                "GET",
+                "HEAD"
+            ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/ml/forecast/{everything}",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "forecastservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/api/ml/forecast/{everything}",
+            "UpstreamHttpMethod": [
+                "GET",
+                "POST",
+                "OPTIONS"
+            ],
+            "AuthenticationOptions": {
+                "AuthenticationProviderKey": "Bearer"
+            }
+        },
+        {
+            "DownstreamPathTemplate": "/health",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "forecastservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/forecast/health",
+            "UpstreamHttpMethod": [
+                "GET",
+                "HEAD"
+            ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/ml/churn/{everything}",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "predictionservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/api/ml/churn/{everything}",
+            "UpstreamHttpMethod": [
+                "GET",
+                "POST",
+                "OPTIONS"
+            ],
+            "AuthenticationOptions": {
+                "AuthenticationProviderKey": "Bearer"
+            }
+        },
+        {
+            "DownstreamPathTemplate": "/api/ml/segmentation/{everything}",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "predictionservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/api/ml/segmentation/{everything}",
+            "UpstreamHttpMethod": [
+                "GET",
+                "POST",
+                "OPTIONS"
+            ],
+            "AuthenticationOptions": {
+                "AuthenticationProviderKey": "Bearer"
+            }
+        },
+        {
+            "DownstreamPathTemplate": "/health",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "predictionservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/prediction/health",
+            "UpstreamHttpMethod": [
+                "GET",
+                "HEAD"
+            ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/dashboard/{everything}",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "analyticsservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/api/dashboard/{everything}",
+            "UpstreamHttpMethod": [
+                "GET",
+                "OPTIONS"
+            ],
+            "AuthenticationOptions": {
+                "AuthenticationProviderKey": "Bearer"
+            }
+        },
+        {
+            "DownstreamPathTemplate": "/health",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "analyticsservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/analytics/health",
+            "UpstreamHttpMethod": [
+                "GET",
+                "HEAD"
+            ]
+        }
+    ],
+    "GlobalConfiguration": {
+        "BaseUrl": "https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io"
+    }
+}

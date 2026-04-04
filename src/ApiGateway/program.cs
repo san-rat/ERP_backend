@@ -78,22 +78,6 @@ try
     builder.Services.AddSwaggerGen(c =>
     {
         c.SwaggerDoc("v1", new OpenApiInfo { Title = "InsightERP API Gateway", Version = "v1" });
-        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            Description  = "JWT Bearer token",
-            Name         = "Authorization",
-            In           = ParameterLocation.Header,
-            Type         = SecuritySchemeType.Http,
-            Scheme       = "bearer",
-            BearerFormat = "JWT"
-        });
-        c.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } },
-                Array.Empty<string>()
-            }
-        });
     });
 
     builder.Services.AddCors(options => options.AddPolicy("AllowAll", p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
@@ -110,8 +94,14 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
-    app.MapHealthChecks("/health");
-    app.MapControllers();
+    app.UseEndpoints(endpoints =>
+    {
+        endpoints.MapHealthChecks("/health");
+        endpoints.MapHealthChecks("/Gateway/health");
+        endpoints.MapHealthChecks("/Gateway/live");
+        endpoints.MapHealthChecks("/Gateway/ready");
+        endpoints.MapControllers();
+    });
 
     // Ocelot MUST be registered LAST
     await app.UseOcelot();

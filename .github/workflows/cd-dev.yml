@@ -120,6 +120,13 @@ jobs:
             fi
           done
 
+      - name: Set ApiGateway environment to Dev
+        run: |
+          az containerapp update \
+            --name apigateway-dev \
+            --resource-group erp-rg \
+            --set-env-vars "ASPNETCORE_ENVIRONMENT=Dev"
+
       - name: Configure AuthService DB connection string
         env:
           AUTH_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING_AZURE }}
@@ -150,8 +157,61 @@ jobs:
             --resource-group erp-rg \
             --set-env-vars "ConnectionStrings__ChurnDb=secretref:prediction-db-conn"
 
-      - name: Smoke test — AuthService health check
+      - name: Configure ProductService DB connection string
+        env:
+          PRODUCT_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING_AZURE }}
         run: |
-          echo "Waiting 30s for new revision to become active..."
+          echo ">>> Setting ConnectionStrings__DefaultConnection secret on productservice-dev..."
+          az containerapp secret set \
+            --name productservice-dev \
+            --resource-group erp-rg \
+            --secrets "product-db-conn=$PRODUCT_DB_CONN"
+
+          az containerapp update \
+            --name productservice-dev \
+            --resource-group erp-rg \
+            --set-env-vars "ConnectionStrings__DefaultConnection=secretref:product-db-conn"
+
+      - name: Resolve ApiGateway URL
+        shell: bash
+        run: |
+          GATEWAY_FQDN="$(az containerapp show \
+            --name apigateway-dev \
+            --resource-group erp-rg \
+            --query properties.configuration.ingress.fqdn \
+            -o tsv)"
+
+          if [[ -z "$GATEWAY_FQDN" ]]; then
+            echo "Failed to resolve ApiGateway FQDN."
+            exit 1
+          fi
+
+          echo "API_GATEWAY_URL=https://${GATEWAY_FQDN}" >> "$GITHUB_ENV"
+
+      - name: Smoke tests — Service health checks via ApiGateway
+        shell: bash
+        run: |
+          echo "Waiting 30s for new revisions to become active..."
           sleep 30
-          curl -fsS "${{ secrets.AUTH_SERVICE_URL }}/health"
+
+          ENDPOINTS=(
+            "ApiGateway:/health"
+            "AuthService:/auth/health"
+            "ForecastService:/forecast/health"
+            "PredictionService:/prediction/health"
+          )
+
+          for endpoint in "${ENDPOINTS[@]}"; do
+            IFS=':' read -r service path <<< "$endpoint"
+            url="${API_GATEWAY_URL}${path}"
+
+            echo ">>> Smoke testing ${service} via ${url}"
+            curl -fsS \
+              --retry 6 \
+              --retry-delay 10 \
+              --retry-all-errors \
+              --connect-timeout 10 \
+              --max-time 30 \
+              "$url"
+            echo
+          done
