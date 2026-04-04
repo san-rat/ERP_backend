@@ -18,13 +18,13 @@ builder.Services.AddControllers();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
-// Add DbContext with MySQL
+// Add DbContext with SQL Server
 builder.Services.AddDbContext<OrderDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
         ?? throw new Exception("DefaultConnection is missing.");
 
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+    options.UseSqlServer(connectionString);
 });
 
 // Dependency Injection
