@@ -208,8 +208,8 @@ jobs:
       - name: Smoke tests — Service health checks via ApiGateway
         shell: bash
         run: |
-          echo "Waiting 30s for new revisions to become active..."
-          sleep 30
+          echo "Waiting 60s for new revisions to become active..."
+          sleep 60
 
           ENDPOINTS=(
             "ApiGateway:/health"
@@ -224,11 +224,11 @@ jobs:
 
             echo ">>> Smoke testing ${service} via ${url}"
             curl -fsS \
-              --retry 6 \
-              --retry-delay 10 \
+              --retry 10 \
+              --retry-delay 15 \
               --retry-all-errors \
-              --connect-timeout 10 \
-              --max-time 30 \
+              --connect-timeout 15 \
+              --max-time 60 \
               "$url"
             echo
           done
