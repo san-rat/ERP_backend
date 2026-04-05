@@ -29,7 +29,7 @@ try
         .SetBasePath(builder.Environment.ContentRootPath)
         .AddJsonFile("appsettings.json",                                          optional: false, reloadOnChange: true)
         .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json",   optional: true)
-        // .AddJsonFile("ocelot.json",                                               optional: false, reloadOnChange: true)
+        .AddJsonFile("ocelot.json",                                               optional: false, reloadOnChange: true)
         .AddJsonFile($"ocelot.{builder.Environment.EnvironmentName}.json",        optional: true,  reloadOnChange: true)
         .AddEnvironmentVariables();
 
