@@ -1,19 +1,73 @@
-@OrderService_HostAddress = http://localhost:5003
-@gateway = http://localhost:5000
+@OrderService_HostAddress = https://localhost:5001
 
-###
-# Direct — health check (no token)
-GET {{OrderService_HostAddress}}/health
-Accept: application/json
+### Health
+GET {{OrderService_HostAddress}}/api/health
 
-###
-# Via Gateway — order health (no token)
-GET {{gateway}}/order/health
-Accept: application/json
+### Get all orders
+GET {{OrderService_HostAddress}}/api/orders
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
-###
-# Via Gateway — order endpoints (requires Bearer token)
-GET {{gateway}}/api/orders/
-Accept: application/json
+### Get order by id
+GET {{OrderService_HostAddress}}/api/orders/1
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
 
-###
+### Create order
+POST {{OrderService_HostAddress}}/api/orders
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "externalOrderId": "ECOM-1001",
+  "customerId": "CUS-5001",
+  "totalAmount": 2500.00
+}
+
+### Confirm order
+PUT {{OrderService_HostAddress}}/api/orders/1/status
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "newStatus": "Confirmed"
+}
+
+### Process order
+PUT {{OrderService_HostAddress}}/api/orders/1/status
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "newStatus": "Processing"
+}
+
+### Ship order
+PUT {{OrderService_HostAddress}}/api/orders/1/status
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "newStatus": "Shipped"
+}
+
+### Deliver order
+PUT {{OrderService_HostAddress}}/api/orders/1/status
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "newStatus": "Delivered"
+}
+
+### Cancel order
+PUT {{OrderService_HostAddress}}/api/orders/1/status
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "newStatus": "Cancelled",
+  "cancellationReason": "Customer requested cancellation"
+}
+
+### Manager report
+GET {{OrderService_HostAddress}}/api/orders/reports/summary
+Authorization: Bearer YOUR_JWT_TOKEN_HERE

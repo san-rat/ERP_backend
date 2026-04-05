@@ -26,6 +26,11 @@ GET {{ApiGateway_HostAddress}}/product/health
 Accept: application/json
 
 ###
+# Proxy — AdminService health (no token)
+GET {{ApiGateway_HostAddress}}/admin/health
+Accept: application/json
+
+###
 # Proxy — ForecastService health (no token)
 GET {{ApiGateway_HostAddress}}/forecast/health
 Accept: application/json
@@ -39,5 +44,11 @@ Accept: application/json
 # Proxy — AnalyticsService health (no token)
 GET {{ApiGateway_HostAddress}}/analytics/health
 Accept: application/json
+
+###
+# Proxy — AdminService list users (JWT required)
+GET {{ApiGateway_HostAddress}}/api/admin/users?pageNumber=1&pageSize=10
+Accept: application/json
+Authorization: Bearer replace-with-admin-jwt
 
 ###

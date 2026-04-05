@@ -1,0 +1,234 @@
+name: CD Prod — Migrate, Build & Push all services, Deploy to Azure
+
+on:
+  push:
+    branches: [ "main" ]
+
+# Required for OIDC authentication (passwordless Azure login)
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install sqlcmd
+        run: sudo apt-get update && sudo apt-get install -y mssql-tools18 unixodbc-dev
+
+      - name: Debug DB env (safe)
+        shell: bash
+        env:
+          PROD_AZURE_SQL_SERVER: ${{ secrets.PROD_AZURE_SQL_SERVER }}
+          PROD_AZURE_SQL_DATABASE: ${{ secrets.PROD_AZURE_SQL_DATABASE }}
+          PROD_AZURE_SQL_USER: ${{ secrets.PROD_AZURE_SQL_USER }}
+        run: |
+          echo "PROD_AZURE_SQL_SERVER=$PROD_AZURE_SQL_SERVER"
+          echo "PROD_AZURE_SQL_DATABASE=$PROD_AZURE_SQL_DATABASE"
+          echo "PROD_AZURE_SQL_USER=$PROD_AZURE_SQL_USER"
+
+      - name: Apply DB migrations (Azure SQL)
+        shell: bash
+        env:
+          AZURE_SQL_SERVER: ${{ secrets.PROD_AZURE_SQL_SERVER }}
+          AZURE_SQL_DATABASE: ${{ secrets.PROD_AZURE_SQL_DATABASE }}
+          AZURE_SQL_USER: ${{ secrets.PROD_AZURE_SQL_USER }}
+          AZURE_SQL_PASSWORD: ${{ secrets.PROD_AZURE_SQL_PASSWORD }}
+        run: |
+          # Add mssql-tools to PATH
+          export PATH="$PATH:/opt/mssql-tools18/bin"
+
+          TARGETS=(
+            "schemas/auth/migrations:auth"
+            "schemas/customer/migrations:customer"
+            "schemas/product/migrations:product"
+            "schemas/order/migrations:order"
+            "schemas/prediction/migrations:ml"
+            "schemas/analytics/migrations:analytics"
+          )
+
+          for target in "${TARGETS[@]}"; do
+            IFS=':' read -r dir schema <<< "$target"
+            echo ">>> Applying ${dir} to schema ${schema}..."
+            bash ./scripts/apply_sqlserver_migrations.sh "$dir" "$schema"
+          done
+
+      - name: Docker login to ACR
+        run: echo "${{ secrets.PROD_ACR_PASSWORD }}" | docker login ${{ secrets.PROD_ACR_LOGIN_SERVER }} -u ${{ secrets.PROD_ACR_USERNAME }} --password-stdin
+
+      - name: Build and push all images to ACR
+        run: |
+          SERVICES=(apigateway analyticsservice authservice customerservice forecastservice orderservice predictionservice productservice)
+          SRC_DIRS=(ApiGateway AnalyticsService AuthService CustomerService ForecastService OrderService PredictionService ProductService)
+
+          for i in "${!SERVICES[@]}"; do
+            SVC="${SERVICES[$i]}"
+            DIR="${SRC_DIRS[$i]}"
+            IMAGE_SHA="${{ secrets.PROD_ACR_LOGIN_SERVER }}/${SVC}:${{ github.sha }}"
+            IMAGE_LATEST="${{ secrets.PROD_ACR_LOGIN_SERVER }}/${SVC}:latest"
+
+            echo ">>> Building ${SVC}..."
+            docker build -t "$IMAGE_SHA" -t "$IMAGE_LATEST" -f "src/${DIR}/Dockerfile" "src/${DIR}"
+
+            echo ">>> Pushing ${SVC}..."
+            docker push "$IMAGE_SHA"
+            docker push "$IMAGE_LATEST"
+          done
+
+      - name: Azure Login (OIDC — no password needed)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.PROD_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.PROD_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.PROD_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy all services to Azure Container Apps
+        run: |
+          SERVICES=(apigateway    analyticsservice    authservice    customerservice    forecastservice    orderservice    predictionservice    productservice)
+          APP_NAMES=(apigateway-prod analyticsservice-prod authservice-prod customerservice-prod forecastservice-prod orderservice-prod predictionservice-prod productservice-prod)
+
+          for i in "${!SERVICES[@]}"; do
+            SVC="${SERVICES[$i]}"
+            APP="${APP_NAMES[$i]}"
+            IMAGE="${{ secrets.PROD_ACR_LOGIN_SERVER }}/${SVC}:${{ github.sha }}"
+
+            echo ">>> Configuring ACR credentials for ${APP}..."
+            az containerapp registry set \
+              --name "$APP" \
+              --resource-group erp-rg-prod \
+              --server "${{ secrets.PROD_ACR_LOGIN_SERVER }}" \
+              --username "${{ secrets.PROD_ACR_USERNAME }}" \
+              --password "${{ secrets.PROD_ACR_PASSWORD }}"
+
+            echo ">>> Deploying ${APP} with image ${IMAGE}..."
+            az containerapp update \
+              --name "$APP" \
+              --resource-group erp-rg-prod \
+              --image "$IMAGE"
+
+            # Keep the gateway and auth service always warm (minReplicas=1)
+            # so the frontend never hits a cold-start on first load
+            if [[ "$APP" == "apigateway-prod" || "$APP" == "authservice-prod" ]]; then
+              az containerapp update \
+                --name "$APP" \
+                --resource-group erp-rg-prod \
+                --min-replicas 1
+            fi
+          done
+
+      - name: Set ApiGateway environment to Production
+        run: |
+          az containerapp update \
+            --name apigateway-prod \
+            --resource-group erp-rg-prod \
+            --set-env-vars "ASPNETCORE_ENVIRONMENT=Production"
+
+      - name: Configure AuthService JWT secret and DB connection
+        env:
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
+          AUTH_DB_CONN: ${{ secrets.PROD_SQL_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting JWT_SECRET and ConnectionStrings__AuthDb on authservice-prod..."
+          az containerapp secret set \
+            --name authservice-prod \
+            --resource-group erp-rg-prod \
+            --secrets "jwt-secret=$JWT_SECRET" "auth-db-conn=$AUTH_DB_CONN"
+
+          az containerapp update \
+            --name authservice-prod \
+            --resource-group erp-rg-prod \
+            --set-env-vars "JWT_SECRET=secretref:jwt-secret" "ConnectionStrings__AuthDb=secretref:auth-db-conn"
+
+      - name: Configure ApiGateway JWT secret
+        env:
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
+        run: |
+          echo ">>> Setting JWT_SECRET on apigateway-prod..."
+          az containerapp secret set \
+            --name apigateway-prod \
+            --resource-group erp-rg-prod \
+            --secrets "jwt-secret=$JWT_SECRET"
+
+          az containerapp update \
+            --name apigateway-prod \
+            --resource-group erp-rg-prod \
+            --set-env-vars "JWT_SECRET=secretref:jwt-secret"
+
+      - name: Configure ProductService JWT secret and DB connection
+        env:
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
+          PRODUCT_DB_CONN: ${{ secrets.PROD_SQL_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting JwtSettings__SecretKey and ConnectionStrings__DefaultConnection on productservice-prod..."
+          az containerapp secret set \
+            --name productservice-prod \
+            --resource-group erp-rg-prod \
+            --secrets "jwt-secret=$JWT_SECRET" "product-db-conn=$PRODUCT_DB_CONN"
+
+          az containerapp update \
+            --name productservice-prod \
+            --resource-group erp-rg-prod \
+            --set-env-vars "JwtSettings__SecretKey=secretref:jwt-secret" "ConnectionStrings__DefaultConnection=secretref:product-db-conn"
+
+      - name: Configure PredictionService DB connection string
+        env:
+          PREDICTION_DB_CONN: ${{ secrets.PROD_SQL_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting ConnectionStrings__ChurnDb on predictionservice-prod..."
+          az containerapp secret set \
+            --name predictionservice-prod \
+            --resource-group erp-rg-prod \
+            --secrets "prediction-db-conn=$PREDICTION_DB_CONN"
+
+          az containerapp update \
+            --name predictionservice-prod \
+            --resource-group erp-rg-prod \
+            --set-env-vars "ConnectionStrings__ChurnDb=secretref:prediction-db-conn"
+
+      - name: Resolve ApiGateway URL
+        shell: bash
+        run: |
+          GATEWAY_FQDN="$(az containerapp show \
+            --name apigateway-prod \
+            --resource-group erp-rg-prod \
+            --query properties.configuration.ingress.fqdn \
+            -o tsv)"
+
+          if [[ -z "$GATEWAY_FQDN" ]]; then
+            echo "Failed to resolve ApiGateway FQDN."
+            exit 1
+          fi
+
+          echo "API_GATEWAY_URL=https://${GATEWAY_FQDN}" >> "$GITHUB_ENV"
+
+      - name: Smoke tests — Service health checks via ApiGateway
+        shell: bash
+        run: |
+          echo "Waiting 30s for new revisions to become active..."
+          sleep 30
+
+          ENDPOINTS=(
+            "ApiGateway:/health"
+            "AuthService:/auth/health"
+            "ForecastService:/forecast/health"
+            "PredictionService:/prediction/health"
+          )
+
+          for endpoint in "${ENDPOINTS[@]}"; do
+            IFS=':' read -r service path <<< "$endpoint"
+            url="${API_GATEWAY_URL}${path}"
+
+            echo ">>> Smoke testing ${service} via ${url}"
+            curl -fsS \
+              --retry 6 \
+              --retry-delay 10 \
+              --retry-all-errors \
+              --connect-timeout 10 \
+              --max-time 30 \
+              "$url"
+            echo
+          done

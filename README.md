@@ -35,7 +35,8 @@ API Gateway (:5000)   ← single entry point for all requests
         ├── ProductService     (:5004)
         ├── ForecastService    (:5005)
         ├── PredictionService  (:5006)
-        └── AnalyticsService   (:5007)
+        ├── AnalyticsService   (:5007)
+        └── AdminService       (:5011)
                 │
                 ▼
          Azure SQL DB      ← insighterp_db on insighterp-sqlserver.database.windows.net
@@ -50,11 +51,12 @@ API Gateway (:5000)   ← single entry point for all requests
 |---|---|
 | **API Gateway** | https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io |
 | **AuthService** | https://authservice-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io |
+| **Admin API (via Gateway)** | https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/api/admin/* |
 | **Gateway Swagger** | https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/swagger |
 | **Auth Swagger** | https://authservice-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/swagger |
 | **Gateway Health** | https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/auth/health |
 
-> All other services (Customer, Order, Product, Forecast, Prediction, Analytics) are **internal only** — accessible only through the API Gateway, not directly from the internet.
+> All other services (Customer, Order, Product, Forecast, Prediction, Analytics, Admin) are **internal only** — accessible only through the API Gateway, not directly from the internet.
 
 ---
 
@@ -161,6 +163,7 @@ docker compose down
 | ForecastService | http://localhost:5005 | http://localhost:5005/swagger |
 | PredictionService | http://localhost:5006 | http://localhost:5006/swagger |
 | AnalyticsService | http://localhost:5007 | http://localhost:5007/swagger |
+| AdminService | http://localhost:5011 | http://localhost:5011/swagger |
 | Frontend | http://localhost:5173 | — |
 
 ---
@@ -173,6 +176,7 @@ http://localhost:5000/auth/health
 http://localhost:5000/customer/health
 http://localhost:5000/order/health
 http://localhost:5000/product/health
+http://localhost:5000/admin/health
 http://localhost:5000/forecast/health
 http://localhost:5000/prediction/health
 http://localhost:5000/analytics/health
@@ -184,6 +188,7 @@ https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps
 https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/customer/health
 https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/order/health
 https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/product/health
+https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/admin/health
 https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/forecast/health
 https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/prediction/health
 https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/analytics/health
@@ -202,19 +207,19 @@ Runs automatically to catch broken code early:
 1. Restores all .NET packages
 2. Builds the full solution
 3. Runs all automated tests (`dotnet test`)
-4. Builds Docker images for all 8 services (validates Dockerfiles)
+4. Builds Docker images for all 9 services (validates Dockerfiles)
 
 ### CD — `cd-dev.yml`
 **Triggers:** Push to the `dev` branch only
 
 Deploys everything to Azure automatically:
 1. Applies T-SQL database migrations against **Azure SQL** (`insighterp_db`) using `sqlcmd`
-2. Builds and pushes all 8 Docker images to Azure Container Registry
+2. Builds and pushes all 9 Docker images to Azure Container Registry
 3. Logs into Azure using **OIDC** (passwordless — no stored credentials)
 4. Configures ACR credentials on each Container App
-5. Deploys updated images to all 8 Azure Container Apps
-6. Sets the AuthService DB connection string (`AUTH_DB_CONNECTION_STRING_AZURE`) as an encrypted secret
-7. Smoke tests the AuthService `/health` endpoint to confirm deployment
+5. Deploys updated images to all 9 Azure Container Apps
+6. Sets shared DB connection-string secrets for AuthService, AdminService, PredictionService, and ProductService
+7. Smoke tests core service `/health` endpoints through the API Gateway
 
 ---
 
@@ -226,6 +231,7 @@ Deploys everything to Azure automatically:
 | [`docs/database/database-guide.md`](./docs/database/database-guide.md) | 🗄️ **Database guide** — architecture, local setup, Azure deployment, how to add schemas, migration rules |
 | [`docs/micro_archi_structure_guide/micro_archi.md`](./docs/micro_archi_structure_guide/micro_archi.md) | Microservice architecture, ports, and Azure deployment details |
 | [`docs/micro_archi_structure_guide/structure_guide.md`](./docs/micro_archi_structure_guide/structure_guide.md) | AuthService folder/file breakdown |
+| [`src/AdminService/docs/README_ADMIN.md`](./src/AdminService/docs/README_ADMIN.md) | AdminService endpoints, responsibilities, and local verification steps |
 | [`docs/DevOps/Sprint1/devops-sprint1.md`](./docs/DevOps/Sprint1/devops-sprint1.md) | DevOps Sprint 1 — full CI/CD implementation walkthrough |
 | [`docs/DevOps/Sprint1/troubleshooting-sprint1.md`](./docs/DevOps/Sprint1/troubleshooting-sprint1.md) | All problems encountered in Sprint 1 and how they were fixed |
 | [`docs/security/SECURITY_BEST_PRACTICES.md`](./docs/security/SECURITY_BEST_PRACTICES.md) | Security guidelines |

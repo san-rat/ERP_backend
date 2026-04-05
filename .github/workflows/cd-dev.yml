@@ -62,8 +62,8 @@ jobs:
 
       - name: Build and push all images to ACR
         run: |
-          SERVICES=(apigateway analyticsservice authservice customerservice forecastservice orderservice predictionservice productservice)
-          SRC_DIRS=(ApiGateway AnalyticsService AuthService CustomerService ForecastService OrderService PredictionService ProductService)
+          SERVICES=(apigateway adminservice analyticsservice authservice customerservice forecastservice orderservice predictionservice productservice)
+          SRC_DIRS=(ApiGateway AdminService AnalyticsService AuthService CustomerService ForecastService OrderService PredictionService ProductService)
 
           for i in "${!SERVICES[@]}"; do
             SVC="${SERVICES[$i]}"
@@ -88,8 +88,8 @@ jobs:
 
       - name: Deploy all services to Azure Container Apps
         run: |
-          SERVICES=(apigateway    analyticsservice    authservice    customerservice    forecastservice    orderservice    predictionservice    productservice)
-          APP_NAMES=(apigateway-dev analyticsservice-dev authservice-dev customerservice-dev forecastservice-dev orderservice-dev predictionservice-dev productservice-dev)
+          SERVICES=(apigateway    adminservice    analyticsservice    authservice    customerservice    forecastservice    orderservice    predictionservice    productservice)
+          APP_NAMES=(apigateway-dev adminservice-dev analyticsservice-dev authservice-dev customerservice-dev forecastservice-dev orderservice-dev predictionservice-dev productservice-dev)
 
           for i in "${!SERVICES[@]}"; do
             SVC="${SERVICES[$i]}"
@@ -157,6 +157,21 @@ jobs:
             --resource-group erp-rg \
             --set-env-vars "ConnectionStrings__ChurnDb=secretref:prediction-db-conn"
 
+      - name: Configure AdminService DB connection string
+        env:
+          ADMIN_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting ConnectionStrings__AuthDb secret on adminservice-dev..."
+          az containerapp secret set \
+            --name adminservice-dev \
+            --resource-group erp-rg \
+            --secrets "auth-db-conn=$ADMIN_DB_CONN"
+
+          az containerapp update \
+            --name adminservice-dev \
+            --resource-group erp-rg \
+            --set-env-vars "ConnectionStrings__AuthDb=secretref:auth-db-conn"
+
       - name: Configure ProductService DB connection string
         env:
           PRODUCT_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING_AZURE }}
@@ -197,6 +212,7 @@ jobs:
           ENDPOINTS=(
             "ApiGateway:/health"
             "AuthService:/auth/health"
+            "AdminService:/admin/health"
             "ForecastService:/forecast/health"
             "PredictionService:/prediction/health"
           )
