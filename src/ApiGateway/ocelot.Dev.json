@@ -260,6 +260,43 @@
                 "GET",
                 "HEAD"
             ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/admin/{everything}",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "adminservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/api/admin/{everything}",
+            "UpstreamHttpMethod": [
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
+            ],
+            "AuthenticationOptions": {
+                "AuthenticationProviderKey": "Bearer"
+            }
+        },
+        {
+            "DownstreamPathTemplate": "/health",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "adminservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/admin/health",
+            "UpstreamHttpMethod": [
+                "GET",
+                "HEAD"
+            ]
         }
     ],
     "GlobalConfiguration": {

@@ -1,0 +1,37 @@
+@AdminService_HostAddress = http://localhost:5011
+@gateway = http://localhost:5000
+@token = replace-with-admin-jwt
+
+###
+# Direct - health check
+GET {{AdminService_HostAddress}}/health
+Accept: application/json
+
+###
+# Via Gateway - admin health
+GET {{gateway}}/admin/health
+Accept: application/json
+
+###
+# Via Gateway - list users
+GET {{gateway}}/api/admin/users?pageNumber=1&pageSize=10
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+# Via Gateway - create manager
+POST {{gateway}}/api/admin/users/managers
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "username": "manager.new",
+  "email": "manager.new@insighterp.local",
+  "fullName": "New Manager"
+}
+
+###
+# Via Gateway - dashboard overview
+GET {{gateway}}/api/admin/dashboard/overview
+Accept: application/json
+Authorization: Bearer {{token}}

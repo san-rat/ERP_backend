@@ -80,6 +80,7 @@ Use these names or keep the same pattern:
 | ForecastService app | `forecastservice-prod` |
 | PredictionService app | `predictionservice-prod` |
 | AnalyticsService app | `analyticsservice-prod` |
+| AdminService app | `adminservice-prod` |
 | Azure SQL server | `insighterp-sql-prod-<unique>` |
 | Azure SQL database | `insighterp_db_prod` |
 | Azure Container Registry | `erpprodacr<unique>` |
@@ -115,7 +116,7 @@ Use a table like this:
 |---|---|---|
 | Resource group | `erp-rg-prod` | Portal resource container, workflow |
 | Region | `Southeast Asia` | All Azure resources |
-| Container Apps environment | `erp-prod-env` | All 8 apps |
+| Container Apps environment | `erp-prod-env` | All 9 apps |
 | Container Registry | `erpprodacr1234` | Docker image storage |
 | SQL server | `insighterp-sql-prod-1234` | Production DB server |
 | SQL database | `insighterp_db_prod` | Shared production DB |
@@ -213,7 +214,7 @@ In the Azure Portal:
 5. Choose the same production region
 6. Review and create
 
-This environment is the shared internal network for all eight production services.
+This environment is the shared internal network for all nine production services.
 
 ## Step 6: Create The GitHub Deployment Managed Identity In The Azure Portal
 
@@ -304,6 +305,7 @@ Make these changes:
 | `forecastservice-dev.internal...` | `forecastservice-prod` |
 | `predictionservice-dev.internal...` | `predictionservice-prod` |
 | `analyticsservice-dev.internal...` | `analyticsservice-prod` |
+| `adminservice-dev.internal...` | `adminservice-prod` |
 
 4. Update `GlobalConfiguration.BaseUrl` to the real production gateway URL after the gateway app is created:
 
@@ -334,14 +336,14 @@ Log in to ACR with the access-key values copied from the portal:
 docker login <ACR_LOGIN_SERVER> -u <ACR_USERNAME> -p <ACR_PASSWORD>
 ```
 
-From the repo root, build and push all eight images:
+From the repo root, build and push all nine images:
 
 ```bash
 ACR_LOGIN_SERVER="<ACR_LOGIN_SERVER_FROM_PORTAL>"
 
-SERVICES=(apigateway analyticsservice authservice customerservice forecastservice orderservice predictionservice productservice)
-SRC_DIRS=(ApiGateway AnalyticsService AuthService CustomerService ForecastService OrderService PredictionService ProductService)
-DOCKERFILES=(src/ApiGateway/dockerfile src/AnalyticsService/Dockerfile src/AuthService/Dockerfile src/CustomerService/Dockerfile src/ForecastService/Dockerfile src/OrderService/Dockerfile src/PredictionService/Dockerfile src/ProductService/Dockerfile)
+SERVICES=(apigateway adminservice analyticsservice authservice customerservice forecastservice orderservice predictionservice productservice)
+SRC_DIRS=(ApiGateway AdminService AnalyticsService AuthService CustomerService ForecastService OrderService PredictionService ProductService)
+DOCKERFILES=(src/ApiGateway/dockerfile src/AdminService/Dockerfile src/AnalyticsService/Dockerfile src/AuthService/Dockerfile src/CustomerService/Dockerfile src/ForecastService/Dockerfile src/OrderService/Dockerfile src/PredictionService/Dockerfile src/ProductService/Dockerfile)
 
 for i in "${!SERVICES[@]}"; do
   svc="${SERVICES[$i]}"
@@ -357,7 +359,7 @@ for i in "${!SERVICES[@]}"; do
 done
 ```
 
-## Step 12: Create The Eight Container Apps In The Azure Portal
+## Step 12: Create The Nine Container Apps In The Azure Portal
 
 Create the apps manually in the Azure Portal after the `bootstrap` images exist in ACR.
 
@@ -555,6 +557,7 @@ Test these URLs:
 ```text
 https://<PROD_GATEWAY_FQDN>/health
 https://<PROD_GATEWAY_FQDN>/auth/health
+https://<PROD_GATEWAY_FQDN>/admin/health
 https://<PROD_GATEWAY_FQDN>/forecast/health
 https://<PROD_GATEWAY_FQDN>/prediction/health
 ```
