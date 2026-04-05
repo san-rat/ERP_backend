@@ -5,7 +5,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "authservice-prod",
+                    "Host": "authservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -23,7 +23,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "authservice-prod",
+                    "Host": "authservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -38,7 +38,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "customerservice-prod",
+                    "Host": "customerservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -59,7 +59,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "customerservice-prod",
+                    "Host": "customerservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -74,7 +74,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "orderservice-prod",
+                    "Host": "orderservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -95,7 +95,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "orderservice-prod",
+                    "Host": "orderservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -110,7 +110,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "productservice-prod",
+                    "Host": "productservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -131,7 +131,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "productservice-prod",
+                    "Host": "productservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -146,7 +146,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "forecastservice-prod",
+                    "Host": "forecastservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -165,7 +165,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "forecastservice-prod",
+                    "Host": "forecastservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -180,7 +180,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "predictionservice-prod",
+                    "Host": "predictionservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -199,7 +199,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "predictionservice-prod",
+                    "Host": "predictionservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -218,7 +218,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "predictionservice-prod",
+                    "Host": "predictionservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -233,7 +233,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "analyticsservice-prod",
+                    "Host": "analyticsservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
@@ -251,7 +251,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "analyticsservice-prod",
+                    "Host": "analyticsservice-prod.internal.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io",
                     "Port": 8080
                 }
             ],
