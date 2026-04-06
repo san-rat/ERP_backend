@@ -2,11 +2,11 @@
     "Routes": [
         {
             "DownstreamPathTemplate": "/api/auth/{everything}",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "authservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "authservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/api/auth/{everything}",
@@ -20,11 +20,11 @@
         },
         {
             "DownstreamPathTemplate": "/health",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "authservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "authservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/auth/health",
@@ -35,11 +35,11 @@
         },
         {
             "DownstreamPathTemplate": "/api/customers/{everything}",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "customerservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "customerservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/api/customers/{everything}",
@@ -56,11 +56,11 @@
         },
         {
             "DownstreamPathTemplate": "/health",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "customerservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "customerservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/customer/health",
@@ -71,11 +71,11 @@
         },
         {
             "DownstreamPathTemplate": "/api/orders/{everything}",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "orderservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "orderservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/api/orders/{everything}",
@@ -92,11 +92,11 @@
         },
         {
             "DownstreamPathTemplate": "/health",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "orderservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "orderservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/order/health",
@@ -107,11 +107,11 @@
         },
         {
             "DownstreamPathTemplate": "/api/products/{everything}",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "productservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "productservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/api/products/{everything}",
@@ -128,11 +128,11 @@
         },
         {
             "DownstreamPathTemplate": "/health",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "productservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "productservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/product/health",
@@ -143,11 +143,11 @@
         },
         {
             "DownstreamPathTemplate": "/api/ml/forecast/{everything}",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "forecastservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "forecastservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/api/ml/forecast/{everything}",
@@ -162,11 +162,11 @@
         },
         {
             "DownstreamPathTemplate": "/health",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "forecastservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "forecastservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/forecast/health",
@@ -177,11 +177,11 @@
         },
         {
             "DownstreamPathTemplate": "/api/ml/churn/{everything}",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "predictionservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "predictionservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/api/ml/churn/{everything}",
@@ -196,11 +196,11 @@
         },
         {
             "DownstreamPathTemplate": "/api/ml/segmentation/{everything}",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "predictionservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "predictionservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/api/ml/segmentation/{everything}",
@@ -215,11 +215,11 @@
         },
         {
             "DownstreamPathTemplate": "/health",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "predictionservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "predictionservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/prediction/health",
@@ -230,11 +230,11 @@
         },
         {
             "DownstreamPathTemplate": "/api/dashboard/{everything}",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "analyticsservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "analyticsservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/api/dashboard/{everything}",
@@ -248,11 +248,11 @@
         },
         {
             "DownstreamPathTemplate": "/health",
-            "DownstreamScheme": "https",
+            "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "analyticsservice-dev.internal.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io",
-                    "Port": 443
+                    "Host": "analyticsservice-prod",
+                    "Port": 8080
                 }
             ],
             "UpstreamPathTemplate": "/analytics/health",
@@ -263,6 +263,6 @@
         }
     ],
     "GlobalConfiguration": {
-        "BaseUrl": "https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io"
+        "BaseUrl": "https://apigateway-prod.ambitiouscoast-02234f11.eastasia.azurecontainerapps.io"
     }
 }

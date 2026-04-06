@@ -42,6 +42,10 @@ namespace ApiGateway.Tests.Controllers
             
             var framework = GetProperty(okResult.Value, "framework");
             Assert.Equal(".NET 9.0", framework);
+
+            var endpoints = GetProperty(okResult.Value, "endpoints");
+            var adminEndpoint = GetProperty(endpoints, "admin");
+            Assert.Equal("/api/admin/*", adminEndpoint);
         }
 
         [Fact]
@@ -53,7 +57,10 @@ namespace ApiGateway.Tests.Controllers
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             var totalServices = GetProperty(okResult.Value, "totalServices");
-            Assert.Equal(10, totalServices);
+            Assert.Equal(11, totalServices);
+
+            var services = Assert.IsAssignableFrom<System.Collections.IEnumerable>(GetProperty(okResult.Value, "services"));
+            Assert.Contains(services.Cast<object>(), service => Equals(GetProperty(service, "name"), "AdminService"));
         }
 
         [Fact]
@@ -65,7 +72,11 @@ namespace ApiGateway.Tests.Controllers
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             var totalRoutes = GetProperty(okResult.Value, "totalRoutes");
-            Assert.Equal(20, totalRoutes);
+            Assert.Equal(23, totalRoutes);
+
+            var routes = Assert.IsAssignableFrom<System.Collections.IEnumerable>(GetProperty(okResult.Value, "routes"));
+            Assert.Contains(routes.Cast<object>(), route => Equals(GetProperty(route, "upstream"), "/api/admin/*"));
+            Assert.Contains(routes.Cast<object>(), route => Equals(GetProperty(route, "upstream"), "/admin/health"));
         }
 
         [Fact]

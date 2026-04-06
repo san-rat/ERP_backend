@@ -37,6 +37,7 @@ jobs:
       - name: Docker Build all services
         run: |
           docker build -t apigateway:ci        -f src/ApiGateway/Dockerfile        src/ApiGateway
+          docker build -t adminservice:ci      -f src/AdminService/Dockerfile      src/AdminService
           docker build -t analyticsservice:ci  -f src/AnalyticsService/Dockerfile  src/AnalyticsService
           docker build -t authservice:ci       -f src/AuthService/Dockerfile       src/AuthService
           docker build -t customerservice:ci   -f src/CustomerService/Dockerfile   src/CustomerService

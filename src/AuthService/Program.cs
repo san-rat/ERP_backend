@@ -20,27 +20,8 @@ builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 // ── JWT Bearer authentication ─────────────────────────────────────────────────
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-
-            ValidateIssuer           = true,
-            ValidIssuer              = jwtIssuer,
-
-            ValidateAudience         = true,
-            ValidAudience            = jwtAudience,
-
-            ValidateLifetime         = true,
-            ClockSkew                = TimeSpan.Zero   // no grace period
-        };
-    });
-
-builder.Services.AddAuthorization();
+// Removed as Gateway now handles JWT validation centrally.
+// builder.Services.AddAuthorization();
 
 // ── CORS — allow the Vite dev server ─────────────────────────────────────────
 builder.Services.AddCors(options =>
@@ -64,31 +45,6 @@ builder.Services.AddSwaggerGen(c =>
         Version     = "v1",
         Description = "Issues JWT tokens on successful registration or login."
     });
-
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Description  = "Paste your JWT token (without the 'Bearer ' prefix — Swagger adds it).",
-        Name         = "Authorization",
-        In           = ParameterLocation.Header,
-        Type         = SecuritySchemeType.Http,
-        Scheme       = "bearer",
-        BearerFormat = "JWT"
-    });
-
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id   = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
-    });
 });
 
 // ── Pipeline ──────────────────────────────────────────────────────────────────
@@ -102,8 +58,7 @@ app.UseSwaggerUI(c =>
 });
 
 app.UseCors("FrontendDev");        // MUST come before auth
-app.UseAuthentication();           // MUST come before UseAuthorization
-app.UseAuthorization();
+// Removed UseAuthentication/UseAuthorization as Gateway handles it centrally.
 
 app.MapControllers();
 
