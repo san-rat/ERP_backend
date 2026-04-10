@@ -5,6 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+$global:LASTEXITCODE = 0
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $composeArgs = @(
@@ -41,7 +42,7 @@ function Invoke-RepoCommand {
     Push-Location $repoRoot
     try {
         & $FilePath @ArgumentList
-        if ($LASTEXITCODE -ne 0) {
+        if ($global:LASTEXITCODE -ne 0) {
             throw $FailureMessage
         }
     }

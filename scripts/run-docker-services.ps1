@@ -6,6 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+$global:LASTEXITCODE = 0
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $dbSetupScript = Join-Path $PSScriptRoot "setup-local-db.ps1"
@@ -45,7 +46,7 @@ function Test-NativeCommandSucceeds {
     )
 
     & $FilePath @ArgumentList > $null 2>&1
-    return $?
+    return $global:LASTEXITCODE -eq 0
 }
 
 function Invoke-RepoCommand {
@@ -62,12 +63,37 @@ function Invoke-RepoCommand {
     Push-Location $repoRoot
     try {
         & $FilePath @ArgumentList
-        if ($LASTEXITCODE -ne 0) {
+        if ($global:LASTEXITCODE -ne 0) {
             throw $FailureMessage
         }
     }
     finally {
         Pop-Location
+    }
+}
+
+function Invoke-PowerShellScript {
+    param(
+        [Parameter(Mandatory)]
+        [string]$ScriptPath,
+
+        [Parameter(Mandatory)]
+        [string]$FailureMessage
+    )
+
+    $powerShellCommand = Get-Command "powershell.exe" -ErrorAction SilentlyContinue
+    if ($null -eq $powerShellCommand) {
+        throw "Windows PowerShell was not found. Run this script from Windows PowerShell."
+    }
+
+    $process = Start-Process -FilePath $powerShellCommand.Source `
+        -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $ScriptPath) `
+        -Wait `
+        -PassThru `
+        -NoNewWindow
+
+    if ($process.ExitCode -ne 0) {
+        throw $FailureMessage
     }
 }
 
@@ -160,7 +186,7 @@ if (-not $SkipDbSetup) {
 
     Write-Step "Preparing local SQL Server"
     if ($PSCmdlet.ShouldProcess($dbSetupScript, "Run database setup")) {
-        & $dbSetupScript
+        Invoke-PowerShellScript -ScriptPath $dbSetupScript -FailureMessage "Database setup failed."
     }
 }
 else {
