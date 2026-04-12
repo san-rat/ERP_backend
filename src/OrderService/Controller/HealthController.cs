@@ -3,10 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 namespace OrderService.Controller
 {
     [ApiController]
-    [Route("api/health")]
+    [Route("")]
     public class HealthController : ControllerBase
     {
-        [HttpGet]
+        [HttpGet("health")]
+        [HttpHead("health")]
         public IActionResult Get()
         {
             return Ok(new

@@ -12,6 +12,10 @@ using System.Text.Json.Serialization;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+var isRunningInContainer = string.Equals(
+    Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"),
+    "true",
+    StringComparison.OrdinalIgnoreCase);
 
 // Add logging
 builder.Logging.ClearProviders();
@@ -124,10 +128,17 @@ app.UseMiddleware<ErrorHandlingMiddleware>();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("v1/swagger.json", "InsightERP OrderService API v1");
+        options.RoutePrefix = "swagger";
+    });
 }
 
-app.UseHttpsRedirection();
+if (!isRunningInContainer)
+{
+    app.UseHttpsRedirection();
+}
 
 // CORS middleware - must be before Authentication
 app.UseCors("AllowFrontend");

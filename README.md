@@ -70,77 +70,110 @@ API Gateway (:5000)   ← single entry point for all requests
 
 ## 🚀 Starting the System Locally
 
-### Option 1 — Login / Auth only (minimal setup)
+`docker compose up -d` in this repo starts only the local SQL Server container. It does not start the API Gateway or any microservice containers.
 
-Use this when you only need the login page and auth to work.
+### Option 1 — Database only
 
-**Step 1 — Start the database**
+Use this when you only need the local SQL Server instance and schema migrations.
+
 ```powershell
-# Run from the repo root
+.\scripts\setup-local-db.ps1
+```
+
+This starts `sqlserver`, creates `insighterp_db` if needed, and applies all local migrations.
+
+### Option 2 — Host `dotnet run` workflow
+
+Use this for the fastest per-service debugging loop from PowerShell or your IDE.
+
+**Auth + Gateway only**
+```powershell
 docker compose up -d
-```
-
-**Step 2 — Start the AuthService**
-```powershell
 dotnet run --project src/AuthService
-# Runs on http://localhost:5001
-```
-
-**Step 3 — Start the API Gateway**
-```powershell
 dotnet run --project src/ApiGateway
-# Runs on http://localhost:5000
 ```
 
-**Step 4 — Start the frontend**
+**Full host-run stack**
+```powershell
+docker compose up -d
+.\scripts\run-all-services.ps1
+```
+
+This opens each service in its own PowerShell window.
+
+### Option 3 — Full Docker-local stack
+
+Use this when you want the API Gateway and all implemented microservices running in Docker with one command.
+
+**Full stack**
+```powershell
+.\scripts\run-docker-services.ps1
+```
+
+This runs `setup-local-db.ps1`, starts `apigateway` first, then starts the remaining selected services with:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build ...
+```
+
+**Subset stack**
+```powershell
+.\scripts\run-docker-services.ps1 -Services apigateway,authservice
+```
+
+Supported service aliases include:
+
+- `gateway`
+- `auth`
+- `customer`
+- `order`
+- `product`
+- `forecast`
+- `prediction`
+- `analytics`
+- `admin`
+
+**Skip DB setup on repeated runs**
+```powershell
+.\scripts\run-docker-services.ps1 -SkipDbSetup
+```
+
+### Frontend
+
 ```powershell
 # Run from the ERP_frontend folder
 npm run dev
 # Runs on http://localhost:5173
 ```
 
-You can now log in with the default seeded admin account:
+You can log in with the default seeded admin account after the database setup completes:
 
 | Username | Password | Role |
 |---|---|---|
 | `admin` | `Admin@123` | Admin |
 
-> Additional users can be created via `POST /api/auth/register`. Credentials are stored in Azure SQL (`auth.users`).
-
----
-
-### Option 2 — Full system (all microservices)
-
-Use this when you need all services running at once.
-
-**Step 1 — Start the database**
-```powershell
-docker compose up -d
-```
-
-**Step 2 — Start all microservices + gateway**
-```powershell
-# Run from the repo root
-.\scripts\run-all-services.ps1
-```
-This opens each service in its own PowerShell window.
-
-**Step 3 — Start the frontend**
-```powershell
-# Run from the ERP_frontend folder
-npm run dev
-```
+Additional users can be created via `POST /api/auth/register`. Credentials are stored in `auth.users`.
 
 ---
 
 ## 🛑 Stopping the System
 
-**Stop all microservices:**
+**Stop all host-run microservices:**
 ```powershell
 .\scripts\stop-all-services.ps1
 ```
 
-**Stop the database:**
+**Stop all Docker-local app containers:**
+```powershell
+.\scripts\stop-docker-services.ps1
+```
+
+**Stop Docker-local app containers and SQL Server:**
+```powershell
+.\scripts\stop-docker-services.ps1 -IncludeDb
+```
+
+**Stop the database with Compose directly:**
 ```powershell
 docker compose down
 ```
@@ -151,7 +184,7 @@ docker compose down
 
 ## Service URLs
 
-### Local Development
+### Local Development — Host `dotnet run`
 
 | Service | Local URL | Swagger |
 |---|---|---|
@@ -165,6 +198,25 @@ docker compose down
 | AnalyticsService | http://localhost:5007 | http://localhost:5007/swagger |
 | AdminService | http://localhost:5011 | http://localhost:5011/swagger |
 | Frontend | http://localhost:5173 | — |
+
+---
+
+### Local Development — Docker-local via Gateway
+
+Only `ApiGateway` is exposed on the host in the Docker-local workflow.
+
+| Service Surface | URL |
+|---|---|
+| API Gateway | http://localhost:5000 |
+| Gateway health | http://localhost:5000/health |
+| AuthService Swagger | http://localhost:5000/auth/swagger |
+| CustomerService Swagger | http://localhost:5000/customer/swagger |
+| OrderService Swagger | http://localhost:5000/order/swagger |
+| ProductService Swagger | http://localhost:5000/product/swagger |
+| ForecastService Swagger | http://localhost:5000/forecast/swagger |
+| PredictionService Swagger | http://localhost:5000/prediction/swagger |
+| AnalyticsService Swagger | http://localhost:5000/analytics/swagger |
+| AdminService Swagger | http://localhost:5000/admin/swagger |
 
 ---
 
