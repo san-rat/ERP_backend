@@ -6,8 +6,8 @@ namespace OrderService.Services
     {
         Task<OrderResponseDto> CreateOrderAsync(CreateOrderDto dto);
         Task<List<OrderResponseDto>> GetAllOrdersAsync();
-        Task<OrderResponseDto> GetOrderByIdAsync(int id);
-        Task<OrderResponseDto> UpdateOrderStatusAsync(int id, UpdateOrderStatusDto dto);
+        Task<OrderResponseDto> GetOrderByIdAsync(Guid id);
+        Task<OrderResponseDto> UpdateOrderStatusAsync(Guid id, UpdateOrderStatusDto dto);
         Task<object> GetOrderReportAsync();
     }
 }

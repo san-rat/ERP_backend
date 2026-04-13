@@ -6,10 +6,8 @@ namespace ProductService.Models
 {
     public class Inventory
     {
-        [Key]
-        public Guid Id { get; set; } = Guid.NewGuid();
-
         [Required]
+        [Key]
         public Guid ProductId { get; set; }
 
         public int QuantityAvailable { get; set; } = 0;

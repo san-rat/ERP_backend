@@ -17,28 +17,37 @@ namespace OrderService.Data
 
             modelBuilder.Entity<Order>(entity =>
             {
+                entity.ToTable("orders", "dbo");
                 entity.HasKey(o => o.Id);
-
-                entity.HasIndex(o => o.ExternalOrderId).IsUnique();
+                entity.Property(o => o.Id)
+                    .HasColumnName("id")
+                    .ValueGeneratedNever();
 
                 entity.Property(o => o.TotalAmount)
-                    .HasPrecision(18, 2);
+                    .HasColumnName("total_amount")
+                    .HasPrecision(12, 2);
 
-                // Store enum as string for readability in DB
                 entity.Property(o => o.Status)
-                    .HasConversion<string>()
+                    .HasColumnName("status")
                     .HasMaxLength(50);
 
-                entity.Property(o => o.ExternalOrderId)
-                    .HasMaxLength(100)
-                    .IsRequired();
-
                 entity.Property(o => o.CustomerId)
-                    .HasMaxLength(100)
+                    .HasColumnName("customer_id")
                     .IsRequired();
 
-                entity.Property(o => o.CancellationReason)
-                    .HasMaxLength(500);
+                entity.Property(o => o.Currency)
+                    .HasColumnName("currency")
+                    .HasMaxLength(3)
+                    .IsRequired();
+
+                entity.Property(o => o.Notes)
+                    .HasColumnName("notes");
+
+                entity.Property(o => o.CreatedAt)
+                    .HasColumnName("created_at");
+
+                entity.Property(o => o.UpdatedAt)
+                    .HasColumnName("updated_at");
             });
         }
     }

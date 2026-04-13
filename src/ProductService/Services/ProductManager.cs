@@ -24,7 +24,7 @@ namespace ProductService.Services
         // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
         public async Task<PaginatedResponse<ProductResponseDto>> GetProductsAsync(
-            int pageNumber, int pageSize, string? categoryName, string? name)
+            int pageNumber, int pageSize, string? categoryName, int? categoryId, string? name)
         {
             var query = _context.Products
                 .Include(p => p.Category)
@@ -33,6 +33,9 @@ namespace ProductService.Services
 
             if (!string.IsNullOrWhiteSpace(categoryName))
                 query = query.Where(p => p.Category != null && p.Category.Name.ToLower() == categoryName.ToLower());
+
+            if (categoryId.HasValue)
+                query = query.Where(p => p.CategoryId == categoryId.Value);
 
             if (!string.IsNullOrWhiteSpace(name))
                 query = query.Where(p => p.Name.ToLower().Contains(name.ToLower()));
@@ -270,6 +273,7 @@ namespace ProductService.Services
             IsActive          = p.IsActive,
             QuantityAvailable = p.QuantityAvailable,
             QuantityReserved  = p.Inventory?.QuantityReserved  ?? 0,
+            LowStockThreshold = p.Inventory?.LowStockThreshold ?? 0,
             IsLowStock        = p.Inventory?.IsLowStock        ?? false,
             CreatedByUserId   = p.CreatedByUserId
         };

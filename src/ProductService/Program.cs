@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -20,19 +21,29 @@ builder.Services.AddDbContext<ProductDbContext>(options =>
 builder.Services.AddScoped<IProductManager, ProductManager>();
 
 // ΓöÇΓöÇ JWT Authentication ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+    ?? builder.Configuration["JwtSettings:SecretKey"]
+    ?? throw new InvalidOperationException("JwtSettings:SecretKey is not configured.");
+var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "InsightERP";
+var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "InsightERP-Users";
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer           = true,
             ValidateAudience         = true,
             ValidateLifetime         = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer              = builder.Configuration["JwtSettings:Issuer"],
-            ValidAudience            = builder.Configuration["JwtSettings:Audience"],
+            ValidIssuer              = jwtIssuer,
+            ValidAudience            = jwtAudience,
             IssuerSigningKey         = new SymmetricSecurityKey(
-                                           Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"]!))
+                                           Encoding.UTF8.GetBytes(jwtSecret)),
+            NameClaimType            = ClaimTypes.Name,
+            RoleClaimType            = ClaimTypes.Role
         };
     });
 
@@ -96,7 +107,7 @@ using (var scope = app.Services.CreateScope())
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Product Service API v1");
+    c.SwaggerEndpoint("v1/swagger.json", "Product Service API v1");
     c.RoutePrefix = "swagger"; // available at /swagger
 });
 

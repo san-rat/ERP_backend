@@ -28,11 +28,25 @@ public sealed class UserRepository : IUserRepository
         await conn.OpenAsync();
 
         await using var cmd = new SqlCommand(@"
-            SELECT u.id, u.username, u.email, u.password_hash, u.full_name, u.is_active, r.role_name
+            SELECT TOP 1 u.id, u.username, u.email, u.password_hash, u.full_name, u.is_active, r.role_name
             FROM auth.users u
             LEFT JOIN auth.user_roles ur ON u.id = ur.user_id
             LEFT JOIN auth.roles r ON ur.role_id = r.id
-            WHERE u.username = @username", conn);
+            WHERE u.username = @username
+            ORDER BY
+                CASE UPPER(ISNULL(r.role_name, ''))
+                    WHEN 'ADMIN' THEN 0
+                    WHEN 'MANAGER' THEN 1
+                    WHEN 'EMPLOYEE' THEN 2
+                    WHEN 'USER' THEN 2
+                    ELSE 3
+                END,
+                CASE r.role_name
+                    WHEN 'Admin' THEN 0
+                    WHEN 'Manager' THEN 1
+                    WHEN 'Employee' THEN 2
+                    ELSE 3
+                END", conn);
 
         cmd.Parameters.AddWithValue("@username", username);
 
@@ -48,7 +62,7 @@ public sealed class UserRepository : IUserRepository
             PasswordHash: reader.GetString(3),
             FullName:     reader.IsDBNull(4) ? null : reader.GetString(4),
             IsActive:     reader.GetBoolean(5),
-            Role:         reader.IsDBNull(6) ? "Employee" : reader.GetString(6)
+            Role:         NormalizeRole(reader.IsDBNull(6) ? null : reader.GetString(6))
         );
     }
 
@@ -94,10 +108,27 @@ public sealed class UserRepository : IUserRepository
 
         await insertUser.ExecuteNonQueryAsync();
 
-        // Look up role id
-        await using var getRoleId = new SqlCommand(
-            "SELECT id FROM auth.roles WHERE role_name = @role", conn);
-        getRoleId.Parameters.AddWithValue("@role", roleName);
+        var normalizedRole = NormalizeRole(roleName);
+        var roleCandidates = GetRoleCandidates(normalizedRole);
+
+        // Look up role id, preferring canonical role rows when they exist.
+        await using var getRoleId = new SqlCommand(@"
+            SELECT TOP 1 id
+            FROM auth.roles
+            WHERE UPPER(role_name) IN (@candidate0, @candidate1)
+            ORDER BY
+                CASE role_name
+                    WHEN @preferredRole THEN 0
+                    ELSE 1
+                END,
+                CASE UPPER(role_name)
+                    WHEN @preferredUpper THEN 0
+                    ELSE 1
+                END", conn);
+        getRoleId.Parameters.AddWithValue("@candidate0", roleCandidates[0]);
+        getRoleId.Parameters.AddWithValue("@candidate1", roleCandidates[1]);
+        getRoleId.Parameters.AddWithValue("@preferredRole", normalizedRole);
+        getRoleId.Parameters.AddWithValue("@preferredUpper", normalizedRole.ToUpperInvariant());
         var roleId = await getRoleId.ExecuteScalarAsync();
 
         if (roleId != null)
@@ -111,6 +142,29 @@ public sealed class UserRepository : IUserRepository
         }
 
         return userId;
+    }
+
+    private static string NormalizeRole(string? roleName)
+    {
+        return roleName?.Trim().ToUpperInvariant() switch
+        {
+            "ADMIN" => "Admin",
+            "MANAGER" => "Manager",
+            "USER" => "Employee",
+            "EMPLOYEE" => "Employee",
+            null or "" => "Employee",
+            _ => roleName!.Trim()
+        };
+    }
+
+    private static string[] GetRoleCandidates(string normalizedRole)
+    {
+        return normalizedRole switch
+        {
+            "Admin" => ["ADMIN", "ADMIN"],
+            "Manager" => ["MANAGER", "MANAGER"],
+            _ => ["EMPLOYEE", "USER"]
+        };
     }
 }
 

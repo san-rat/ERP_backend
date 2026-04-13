@@ -20,14 +20,9 @@ namespace OrderService.Repositories
             return order;
         }
 
-        public async Task<Order?> GetByIdAsync(int id)
+        public async Task<Order?> GetByIdAsync(Guid id)
         {
             return await _context.Orders.FirstOrDefaultAsync(o => o.Id == id);
-        }
-
-        public async Task<Order?> GetByExternalOrderIdAsync(string externalOrderId)
-        {
-            return await _context.Orders.FirstOrDefaultAsync(o => o.ExternalOrderId == externalOrderId);
         }
 
         public async Task<List<Order>> GetAllAsync()
