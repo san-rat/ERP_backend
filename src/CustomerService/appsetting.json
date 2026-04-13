@@ -1,21 +1,25 @@
 {
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Port=3306;Database=customer_service_db;User=root;Password=yourpassword;"
-  },
-  "Jwt": {
-    "Key": "super-secret-key-change-this-123456",
-    "Issuer": "CustomerService",
-    "Audience": "CustomerPortalUsers"
-  },
-  "Services": {
-    "ProductService": "http://productservice:8080",
-    "OrderService": "http://orderservice:8080"
-  },
   "Logging": {
     "LogLevel": {
       "Default": "Information",
       "Microsoft.AspNetCore": "Warning"
     }
   },
-  "AllowedHosts": "*"
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Port=3307;Database=commerce_customer_db;User=commerce_user;Password=commerce_password;"
+  },
+  "JwtSettings": {
+    "SecretKey": "your-super-secret-key-change-in-production-at-least-32-chars!!",
+    "Issuer": "InsightERP",
+    "Audience": "InsightERP-Users",
+    "ExpiryMinutes": 60
+  },
+  "ServiceEndpoints": {
+    "ProductService": "http://localhost:5004",
+    "OrderService": "http://localhost:5005"
+  },
+  "Cors": {
+    "FrontendUrl": "http://localhost:5173"
+  }
 }
