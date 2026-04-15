@@ -24,7 +24,11 @@ public class FeatureNormalizer
         _ranges["MonetaryValue"] = (0, 100000);
         _ranges["AvgOrderValue"] = (0, 10000);
         _ranges["TenureDays"] = (0, 3650);
+        _ranges["ProductDiversity"] = (0, 50);
+        _ranges["ReturnCount"] = (0, 20);
         _ranges["ReturnRate"] = (0, 1);
+        _ranges["CompletedOrders"] = (0, 100);
+        _ranges["CancelledOrders"] = (0, 50);
         _ranges["CancellationRate"] = (0, 1);
         _ranges["InactiveFlag"] = (0, 1);
     }
@@ -41,12 +45,12 @@ public class FeatureNormalizer
             Normalize((float)features.MonetaryValue, "MonetaryValue"),
             Normalize((float)features.AvgOrderValue, "AvgOrderValue"),
             Normalize(features.TenureDays, "TenureDays"),
-            Normalize(features.ProductDiversity, "Frequency"),
-            Normalize(features.ReturnCount, "Frequency"),
+            Normalize(features.ProductDiversity, "ProductDiversity"),
+            Normalize(features.ReturnCount, "ReturnCount"),
             Normalize((float)features.ReturnRate, "ReturnRate"),
             Normalize((float)features.CancellationRate, "CancellationRate"),
-            Normalize(features.CompletedOrders, "Frequency"),
-            Normalize(features.CancelledOrders, "Frequency"),
+            Normalize(features.CompletedOrders, "CompletedOrders"),
+            Normalize(features.CancelledOrders, "CancelledOrders"),
             Normalize(features.InactiveFlag, "InactiveFlag")
         };
 
