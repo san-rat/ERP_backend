@@ -9,6 +9,12 @@ namespace OrderService.Services
 {
     public class OrderService : IOrderService
     {
+        private const string PendingStatus = "PENDING";
+        private const string ProcessingStatus = "PROCESSING";
+        private const string ShippedStatus = "SHIPPED";
+        private const string DeliveredStatus = "DELIVERED";
+        private const string CancelledStatus = "CANCELLED";
+
         private readonly IOrderRepository _orderRepository;
         private readonly IKafkaProducer _kafkaProducer;
         private readonly ILogger<OrderService> _logger;
@@ -25,20 +31,21 @@ namespace OrderService.Services
 
         public async Task<OrderResponseDto> CreateOrderAsync(CreateOrderDto dto)
         {
-            // Avoid duplicate external order ids
-            var existing = await _orderRepository.GetByExternalOrderIdAsync(dto.ExternalOrderId);
-            if (existing != null)
+            if (!Guid.TryParse(dto.CustomerId, out var customerId))
             {
-                throw new BadRequestException("An order with this ExternalOrderId already exists.");
+                throw new BadRequestException("CustomerId must be a valid GUID.");
             }
 
             var order = new Order
             {
-                ExternalOrderId = dto.ExternalOrderId,
-                CustomerId = dto.CustomerId,
+                Id = Guid.NewGuid(),
+                CustomerId = customerId,
                 TotalAmount = dto.TotalAmount,
-                Status = OrderStatus.Created,
-                CreatedAt = DateTime.UtcNow
+                Status = PendingStatus,
+                Currency = "USD",
+                Notes = BuildStructuredNotes(dto.ExternalOrderId, null),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             await _orderRepository.AddAsync(order);
@@ -56,7 +63,7 @@ namespace OrderService.Services
             return orders.Select(MapToResponse).ToList();
         }
 
-        public async Task<OrderResponseDto> GetOrderByIdAsync(int id)
+        public async Task<OrderResponseDto> GetOrderByIdAsync(Guid id)
         {
             var order = await _orderRepository.GetByIdAsync(id);
             if (order == null)
@@ -67,7 +74,7 @@ namespace OrderService.Services
             return MapToResponse(order);
         }
 
-        public async Task<OrderResponseDto> UpdateOrderStatusAsync(int id, UpdateOrderStatusDto dto)
+        public async Task<OrderResponseDto> UpdateOrderStatusAsync(Guid id, UpdateOrderStatusDto dto)
         {
             var order = await _orderRepository.GetByIdAsync(id);
             if (order == null)
@@ -75,38 +82,17 @@ namespace OrderService.Services
                 throw new NotFoundException("Order not found.");
             }
 
-            ValidateStatusTransition(order, dto);
+            var targetStatus = NormalizeStatus(dto.RequestedStatus);
+            ValidateStatusTransition(order, targetStatus, dto.CancellationReason);
 
-            switch (dto.NewStatus)
+            var externalOrderId = ExtractExternalOrderId(order.Notes);
+
+            order.Status = targetStatus;
+            order.UpdatedAt = DateTime.UtcNow;
+
+            if (targetStatus == CancelledStatus)
             {
-                case OrderStatus.Confirmed:
-                    order.Status = OrderStatus.Confirmed;
-                    order.ConfirmedAt = DateTime.UtcNow;
-                    break;
-
-                case OrderStatus.Processing:
-                    order.Status = OrderStatus.Processing;
-                    order.ProcessedAt = DateTime.UtcNow;
-                    break;
-
-                case OrderStatus.Shipped:
-                    order.Status = OrderStatus.Shipped;
-                    order.ShippedAt = DateTime.UtcNow;
-                    break;
-
-                case OrderStatus.Delivered:
-                    order.Status = OrderStatus.Delivered;
-                    order.DeliveredAt = DateTime.UtcNow;
-                    break;
-
-                case OrderStatus.Cancelled:
-                    order.Status = OrderStatus.Cancelled;
-                    order.CancellationReason = dto.CancellationReason;
-                    order.CancelledAt = DateTime.UtcNow;
-                    break;
-
-                default:
-                    throw new BadRequestException("Unsupported status update.");
+                order.Notes = BuildStructuredNotes(externalOrderId, dto.CancellationReason) ?? dto.CancellationReason;
             }
 
             await _orderRepository.UpdateAsync(order);
@@ -123,81 +109,90 @@ namespace OrderService.Services
         {
             var orders = await _orderRepository.GetAllAsync();
 
+            var normalizedStatuses = orders.Select(o => NormalizeStatus(o.Status)).ToList();
+
             var report = new
             {
                 TotalOrders = orders.Count,
-                Created = orders.Count(o => o.Status == OrderStatus.Created),
-                Confirmed = orders.Count(o => o.Status == OrderStatus.Confirmed),
-                Processing = orders.Count(o => o.Status == OrderStatus.Processing),
-                Shipped = orders.Count(o => o.Status == OrderStatus.Shipped),
-                Delivered = orders.Count(o => o.Status == OrderStatus.Delivered),
-                Cancelled = orders.Count(o => o.Status == OrderStatus.Cancelled),
+                Pending = normalizedStatuses.Count(s => s == PendingStatus),
+                Processing = normalizedStatuses.Count(s => s == ProcessingStatus),
+                Shipped = normalizedStatuses.Count(s => s == ShippedStatus),
+                Delivered = normalizedStatuses.Count(s => s == DeliveredStatus),
+                Cancelled = normalizedStatuses.Count(s => s == CancelledStatus),
                 TotalRevenueFromDelivered = orders
-                    .Where(o => o.Status == OrderStatus.Delivered)
+                    .Where(o => NormalizeStatus(o.Status) == DeliveredStatus)
                     .Sum(o => o.TotalAmount)
             };
 
             return report;
         }
 
-        private void ValidateStatusTransition(Order order, UpdateOrderStatusDto dto)
+        private void ValidateStatusTransition(Order order, string targetStatus, string? cancellationReason)
         {
-            // Once cancelled or delivered, no more changes
-            if (order.Status == OrderStatus.Cancelled)
+            var currentStatus = NormalizeStatus(order.Status);
+
+            if (string.IsNullOrWhiteSpace(targetStatus))
+            {
+                throw new BadRequestException("A target status is required.");
+            }
+
+            if (currentStatus == CancelledStatus)
             {
                 throw new BadRequestException("Cancelled orders cannot be updated.");
             }
 
-            if (order.Status == OrderStatus.Delivered)
+            if (currentStatus == DeliveredStatus)
             {
                 throw new BadRequestException("Delivered orders cannot be updated.");
             }
 
-            // Cancel rules
-            if (dto.NewStatus == OrderStatus.Cancelled)
+            if (targetStatus == CancelledStatus)
             {
-                if (string.IsNullOrWhiteSpace(dto.CancellationReason))
+                if (string.IsNullOrWhiteSpace(cancellationReason))
                 {
                     throw new BadRequestException("Cancellation reason is required when cancelling an order.");
                 }
 
-                // Allowed anytime before delivered
                 return;
             }
 
-            // Only valid forward flow is allowed
-            bool isValid = order.Status switch
+            var isValid = currentStatus switch
             {
-                OrderStatus.Created => dto.NewStatus == OrderStatus.Confirmed,
-                OrderStatus.Confirmed => dto.NewStatus == OrderStatus.Processing,
-                OrderStatus.Processing => dto.NewStatus == OrderStatus.Shipped,
-                OrderStatus.Shipped => dto.NewStatus == OrderStatus.Delivered,
+                PendingStatus => targetStatus == ProcessingStatus,
+                ProcessingStatus => targetStatus == ShippedStatus,
+                ShippedStatus => targetStatus == DeliveredStatus,
                 _ => false
             };
 
             if (!isValid)
             {
                 throw new BadRequestException(
-                    $"Invalid status transition from {order.Status} to {dto.NewStatus}.");
+                    $"Invalid status transition from {currentStatus} to {targetStatus}.");
             }
         }
 
         private OrderResponseDto MapToResponse(Order order)
         {
+            var status = NormalizeStatus(order.Status);
+            var externalOrderId = ExtractExternalOrderId(order.Notes);
+            var cancellationReason = status == CancelledStatus
+                ? ExtractCancellationReason(order.Notes) ?? order.Notes
+                : null;
+
             return new OrderResponseDto
             {
                 Id = order.Id,
-                ExternalOrderId = order.ExternalOrderId,
-                CustomerId = order.CustomerId,
+                ExternalOrderId = externalOrderId ?? string.Empty,
+                CustomerId = order.CustomerId.ToString(),
                 TotalAmount = order.TotalAmount,
-                Status = order.Status,
-                CancellationReason = order.CancellationReason,
+                Status = status,
+                CancellationReason = cancellationReason,
                 CreatedAt = order.CreatedAt,
-                ConfirmedAt = order.ConfirmedAt,
-                ProcessedAt = order.ProcessedAt,
-                ShippedAt = order.ShippedAt,
-                DeliveredAt = order.DeliveredAt,
-                CancelledAt = order.CancelledAt
+                ConfirmedAt = null,
+                ProcessedAt = null,
+                ShippedAt = null,
+                DeliveredAt = null,
+                CancelledAt = status == CancelledStatus ? order.UpdatedAt : null
             };
         }
 
@@ -206,14 +201,70 @@ namespace OrderService.Services
             var payload = JsonSerializer.Serialize(new
             {
                 order.Id,
-                order.ExternalOrderId,
-                Status = order.Status.ToString(),
-                order.CustomerId,
+                CustomerId = order.CustomerId,
+                Status = NormalizeStatus(order.Status),
                 order.TotalAmount,
                 order.CreatedAt
             });
 
             await _kafkaProducer.PublishAsync(topic, order.Id.ToString(), payload);
+        }
+
+        private static string NormalizeStatus(string? status)
+        {
+            return status?.Trim().ToUpperInvariant() switch
+            {
+                "CREATED" => PendingStatus,
+                "CONFIRMED" => ProcessingStatus,
+                PendingStatus => PendingStatus,
+                ProcessingStatus => ProcessingStatus,
+                ShippedStatus => ShippedStatus,
+                DeliveredStatus => DeliveredStatus,
+                CancelledStatus => CancelledStatus,
+                _ => throw new BadRequestException($"Unsupported order status '{status}'.")
+            };
+        }
+
+        private static string? BuildStructuredNotes(string? externalOrderId, string? cancellationReason)
+        {
+            var parts = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(externalOrderId))
+            {
+                parts.Add($"ExternalOrderId:{externalOrderId}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(cancellationReason))
+            {
+                parts.Add($"CancellationReason:{cancellationReason}");
+            }
+
+            return parts.Count == 0 ? null : string.Join(Environment.NewLine, parts);
+        }
+
+        private static string? ExtractExternalOrderId(string? notes)
+            => ExtractStructuredValue(notes, "ExternalOrderId");
+
+        private static string? ExtractCancellationReason(string? notes)
+            => ExtractStructuredValue(notes, "CancellationReason");
+
+        private static string? ExtractStructuredValue(string? notes, string key)
+        {
+            if (string.IsNullOrWhiteSpace(notes))
+            {
+                return null;
+            }
+
+            foreach (var line in notes.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var prefix = $"{key}:";
+                if (line.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    return line[prefix.Length..].Trim();
+                }
+            }
+
+            return null;
         }
     }
 }

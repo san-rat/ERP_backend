@@ -23,8 +23,6 @@ namespace ProductService.Models
 
         public DateTime ReservedAt { get; set; } = DateTime.UtcNow;
 
-        public DateTime? ReleasedAt { get; set; }
-
         [ForeignKey("ProductId")]
         public virtual Product? Product { get; set; }
     }

@@ -4,6 +4,8 @@ This is the recommended local database flow for `InsightERP`.
 
 It uses the repo's Dockerized SQL Server instance, creates `insighterp_db` if needed, and applies all discovered `schemas/*/migrations` folders in dependency order without requiring `sqlcmd` or `bash` on your Windows machine.
 
+This document covers the database setup only. Starting the app stack is a separate step.
+
 ## Prerequisite
 
 - Docker Desktop
@@ -24,6 +26,77 @@ The script is idempotent:
 - it applies only migrations that are not yet recorded in each schema's `schema_migrations` table
 - it skips empty or whitespace-only `.sql` files with a reminder and does not record them
 - it does not wipe the Docker volume
+
+## What This Does Not Start
+
+`setup-local-db.ps1` does not start:
+
+- `ApiGateway`
+- any microservice container
+- any `dotnet run` service process
+
+If you run `docker compose up -d` from the repo root, that also starts only the `sqlserver` service.
+
+## Start The App Stack After DB Setup
+
+After the database is ready, choose one local app workflow.
+
+### Host `dotnet run` workflow
+
+For the existing PowerShell windows workflow:
+
+```powershell
+.\scripts\run-all-services.ps1
+```
+
+Stop it with:
+
+```powershell
+.\scripts\stop-all-services.ps1
+```
+
+### Docker-local app workflow
+
+For the Docker-local stack with the API Gateway exposed on `http://localhost:5000`:
+
+```powershell
+.\scripts\run-docker-services.ps1
+```
+
+For a smaller subset:
+
+```powershell
+.\scripts\run-docker-services.ps1 -Services apigateway,authservice
+```
+
+For repeated runs when the database is already prepared:
+
+```powershell
+.\scripts\run-docker-services.ps1 -SkipDbSetup
+```
+
+Stop only the Docker-local app containers:
+
+```powershell
+.\scripts\stop-docker-services.ps1
+```
+
+Stop the Docker-local app containers and `sqlserver`:
+
+```powershell
+.\scripts\stop-docker-services.ps1 -IncludeDb
+```
+
+Gateway-backed Swagger entrypoints for the Docker-local workflow:
+
+- `http://localhost:5000/auth/swagger`
+- `http://localhost:5000/customer/swagger`
+- `http://localhost:5000/order/swagger`
+- `http://localhost:5000/product/swagger`
+- `http://localhost:5000/forecast/swagger`
+- `http://localhost:5000/prediction/swagger`
+- `http://localhost:5000/analytics/swagger`
+- `http://localhost:5000/admin/swagger`
 
 ## What The Script Does
 

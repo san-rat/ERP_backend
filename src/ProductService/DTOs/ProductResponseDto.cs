@@ -14,6 +14,7 @@ namespace ProductService.DTOs
         public bool IsActive { get; set; }
         public int QuantityAvailable { get; set; }
         public int QuantityReserved { get; set; }
+        public int LowStockThreshold { get; set; }
         public bool IsLowStock { get; set; }
         public Guid? CreatedByUserId { get; set; }
     }

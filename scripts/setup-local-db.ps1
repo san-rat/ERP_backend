@@ -46,10 +46,77 @@ function Invoke-NativeCommand {
         [string]$FailureMessage
     )
 
-    & $FilePath @ArgumentList
-    if ($LASTEXITCODE -ne 0) {
+    $previousErrorActionPreference = $ErrorActionPreference
+    $exitCode = 1
+
+    try {
+        $ErrorActionPreference = "Continue"
+        & $FilePath @ArgumentList
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    if ($exitCode -ne 0) {
         throw $FailureMessage
     }
+}
+
+function Test-NativeCommandSucceeds {
+    param(
+        [Parameter(Mandatory)]
+        [string]$FilePath,
+
+        [string[]]$ArgumentList = @()
+    )
+
+    $previousErrorActionPreference = $ErrorActionPreference
+    $exitCode = 1
+
+    try {
+        $ErrorActionPreference = "Continue"
+        & $FilePath @ArgumentList > $null 2>$null
+        $exitCode = $LASTEXITCODE
+    }
+    catch {
+        return $false
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    return $exitCode -eq 0
+}
+
+function Invoke-NativeCommandForOutput {
+    param(
+        [Parameter(Mandatory)]
+        [string]$FilePath,
+
+        [string[]]$ArgumentList = @(),
+
+        [Parameter(Mandatory)]
+        [string]$FailureMessage
+    )
+
+    $previousErrorActionPreference = $ErrorActionPreference
+    $exitCode = 1
+
+    try {
+        $ErrorActionPreference = "Continue"
+        $output = & $FilePath @ArgumentList 2>$null
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    if ($exitCode -ne 0) {
+        throw $FailureMessage
+    }
+
+    return $output
 }
 
 function Test-CommandAvailable {
@@ -65,16 +132,31 @@ function Test-SqlServerReady {
         [string[]]$SqlCmdCandidates
     )
 
-    # First, verify the container is actually running
-    $containerRunning = & docker inspect -f "{{.State.Running}}" $Container 2>&1
+    # First, verify the container is actually running.
+    $containerRunning = Invoke-NativeCommandForOutput -FilePath "docker" -ArgumentList @(
+        "inspect",
+        "-f",
+        "{{.State.Running}}",
+        $Container
+    ) -FailureMessage "Failed to inspect SQL Server container '$Container'."
+
     if ($containerRunning -ne "true") {
         return $null
     }
 
     foreach ($candidate in $SqlCmdCandidates) {
         # Use -l (login timeout) flag with increased timeout (default is 30, use 10 for retries)
-        & docker exec $Container $candidate -S localhost -U sa -P $Password -C -l 10 -Q "SET NOCOUNT ON; SELECT 1;" > $null 2>&1
-        if ($LASTEXITCODE -eq 0) {
+        if (Test-NativeCommandSucceeds -FilePath "docker" -ArgumentList @(
+            "exec",
+            $Container,
+            $candidate,
+            "-S", "localhost",
+            "-U", "sa",
+            "-P", $Password,
+            "-C",
+            "-l", "10",
+            "-Q", "SET NOCOUNT ON; SELECT 1;"
+        )) {
             return $candidate
         }
     }
@@ -195,10 +277,19 @@ function Get-AppliedMigrationCount {
     )
 
     $countQuery = "SET NOCOUNT ON; SELECT COUNT(*) FROM [$SchemaName].schema_migrations;"
-    $migrationCount = & docker exec $Container $SqlCmdPath -S localhost -U sa -P $Password -C -d $Database -h -1 -W -Q $countQuery 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "Migrations ran for schema '$SchemaName', but the final verification query failed."
-    }
+    $migrationCount = Invoke-NativeCommandForOutput -FilePath "docker" -ArgumentList @(
+        "exec",
+        $Container,
+        $SqlCmdPath,
+        "-S", "localhost",
+        "-U", "sa",
+        "-P", $Password,
+        "-C",
+        "-d", $Database,
+        "-h", "-1",
+        "-W",
+        "-Q", $countQuery
+    ) -FailureMessage "Migrations ran for schema '$SchemaName', but the final verification query failed."
 
     return ($migrationCount | Select-Object -Last 1).ToString().Trim()
 }
@@ -209,13 +300,11 @@ if (-not (Test-CommandAvailable "docker")) {
     throw "Docker CLI was not found. Install Docker Desktop, open it, and try again."
 }
 
-& docker info > $null 2>&1
-if ($LASTEXITCODE -ne 0) {
+if (-not (Test-NativeCommandSucceeds -FilePath "docker" -ArgumentList @("info"))) {
     throw "Docker is installed but the daemon is not available. Start Docker Desktop and try again."
 }
 
-& docker compose version > $null 2>&1
-if ($LASTEXITCODE -ne 0) {
+if (-not (Test-NativeCommandSucceeds -FilePath "docker" -ArgumentList @("compose", "version"))) {
     throw "Docker Compose v2 is not available. Update Docker Desktop and try again."
 }
 

@@ -1,36 +1,31 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace OrderService.Models
 {
+    [Table("orders", Schema = "dbo")]
     public class Order
     {
-        public int Id { get; set; }
-
-        // External order reference from e-commerce app
         [Required]
-        [MaxLength(100)]
-        public string ExternalOrderId { get; set; } = string.Empty;
+        public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
-        [MaxLength(100)]
-        public string CustomerId { get; set; } = string.Empty;
+        public Guid CustomerId { get; set; }
 
-        // Simple total amount for beginner-friendly version
         [Range(0, double.MaxValue)]
         public decimal TotalAmount { get; set; }
 
         [Required]
-        public OrderStatus Status { get; set; } = OrderStatus.Created;
+        [MaxLength(30)]
+        public string Status { get; set; } = "PENDING";
 
-        // Used only when order is cancelled
-        [MaxLength(500)]
-        public string? CancellationReason { get; set; }
+        [Required]
+        [MaxLength(3)]
+        public string Currency { get; set; } = "USD";
+
+        public string? Notes { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime? ConfirmedAt { get; set; }
-        public DateTime? ProcessedAt { get; set; }
-        public DateTime? ShippedAt { get; set; }
-        public DateTime? DeliveredAt { get; set; }
-        public DateTime? CancelledAt { get; set; }
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 }

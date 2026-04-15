@@ -1,14 +1,12 @@
-using OrderService.Models;
-
 namespace OrderService.DTOs
 {
     public class OrderResponseDto
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         public string ExternalOrderId { get; set; } = string.Empty;
         public string CustomerId { get; set; } = string.Empty;
         public decimal TotalAmount { get; set; }
-        public OrderStatus Status { get; set; }
+        public string Status { get; set; } = string.Empty;
         public string? CancellationReason { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? ConfirmedAt { get; set; }

@@ -20,18 +20,25 @@ try
     Log.Information("========== InsightERP API Gateway Starting ==========");
 
     var builder = WebApplication.CreateBuilder(args);
-
+    var contentRootPath = builder.Environment.ContentRootPath;
+    var environmentName = builder.Environment.EnvironmentName;
+    var environmentSpecificOcelotFile = $"ocelot.{environmentName}.json";
+    var selectedOcelotFile = File.Exists(Path.Combine(contentRootPath, environmentSpecificOcelotFile))
+        ? environmentSpecificOcelotFile
+        : "ocelot.json";
 
     builder.Host.UseSerilog();
 
     // ── Configuration ─────────────────────────────────────────────────────────
     builder.Configuration
-        .SetBasePath(builder.Environment.ContentRootPath)
+        .SetBasePath(contentRootPath)
         .AddJsonFile("appsettings.json",                                          optional: false, reloadOnChange: true)
-        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json",   optional: true)
-        .AddJsonFile("ocelot.json",                                               optional: false, reloadOnChange: true)
-        .AddJsonFile($"ocelot.{builder.Environment.EnvironmentName}.json",        optional: true,  reloadOnChange: true)
+        .AddJsonFile($"appsettings.{environmentName}.json",                       optional: true)
+        .AddJsonFile(selectedOcelotFile,                                          optional: false, reloadOnChange: true)
         .AddEnvironmentVariables();
+
+    Log.Information("Environment       → {EnvironmentName}", environmentName);
+    Log.Information("Ocelot Config     → {OcelotConfigFile}", selectedOcelotFile);
 
     // ── JWT settings ──────────────────────────────────────────────────────────
     var jwtSecret   = Environment.GetEnvironmentVariable("JWT_SECRET")

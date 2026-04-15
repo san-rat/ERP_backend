@@ -24,7 +24,7 @@ namespace ProductService.Services
         // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
         public async Task<PaginatedResponse<ProductResponseDto>> GetProductsAsync(
-            int pageNumber, int pageSize, string? categoryName, string? name)
+            int pageNumber, int pageSize, string? categoryName, int? categoryId, string? name)
         {
             var query = _context.Products
                 .Include(p => p.Category)
@@ -33,6 +33,9 @@ namespace ProductService.Services
 
             if (!string.IsNullOrWhiteSpace(categoryName))
                 query = query.Where(p => p.Category != null && p.Category.Name.ToLower() == categoryName.ToLower());
+
+            if (categoryId.HasValue)
+                query = query.Where(p => p.CategoryId == categoryId.Value);
 
             if (!string.IsNullOrWhiteSpace(name))
                 query = query.Where(p => p.Name.ToLower().Contains(name.ToLower()));
@@ -147,9 +150,15 @@ namespace ProductService.Services
                 };
             }
 
-            // Raise low-stock alert if needed
+            // Auto-resolve open alerts when stock is back above threshold; raise one if still low
             if (p.Inventory.IsLowStock)
+            {
                 await EnsureLowStockAlertAsync(id, p.Inventory.QuantityAvailable);
+            }
+            else
+            {
+                await AutoResolveAlertIfRestockedAsync(id);
+            }
 
             await _context.SaveChangesAsync();
 
@@ -258,6 +267,62 @@ namespace ProductService.Services
             }
         }
 
+        /// <summary>
+        /// Automatically resolves any open low-stock alert for a product when its
+        /// stock has been replenished above the configured threshold.
+        /// </summary>
+        private async Task AutoResolveAlertIfRestockedAsync(Guid productId)
+        {
+            var openAlert = await _context.LowStockAlerts
+                .FirstOrDefaultAsync(a => a.ProductId == productId && !a.IsResolved);
+
+            if (openAlert != null)
+            {
+                openAlert.IsResolved = true;
+                openAlert.ResolvedAt = DateTime.UtcNow;
+            }
+        }
+
+        public async Task<IEnumerable<LowStockAlertDto>> GetLowStockAlertsAsync(bool unresolvedOnly = false)
+        {
+            var query = _context.LowStockAlerts
+                .Include(a => a.Product)
+                .AsQueryable();
+
+            if (unresolvedOnly)
+                query = query.Where(a => !a.IsResolved);
+
+            var alerts = await query
+                .OrderByDescending(a => a.AlertedAt)
+                .Select(a => new LowStockAlertDto
+                {
+                    Id               = a.Id,
+                    ProductId        = a.ProductId,
+                    ProductName      = a.Product != null ? a.Product.Name : "Unknown",
+                    Sku              = a.Product != null ? a.Product.Sku  : "N/A",
+                    QuantityAtAlert  = a.QuantityAtAlert,
+                    LowStockThreshold = a.Product != null && a.Product.Inventory != null
+                                        ? a.Product.Inventory.LowStockThreshold : 0,
+                    IsResolved       = a.IsResolved,
+                    AlertedAt        = a.AlertedAt,
+                    ResolvedAt       = a.ResolvedAt
+                })
+                .ToListAsync();
+
+            return alerts;
+        }
+
+        public async Task<bool> ResolveAlertAsync(Guid alertId)
+        {
+            var alert = await _context.LowStockAlerts.FindAsync(alertId);
+            if (alert == null) return false;
+
+            alert.IsResolved = true;
+            alert.ResolvedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         private static ProductResponseDto MapToProductResponse(Product p) => new()
         {
             Id                = p.Id,
@@ -270,6 +335,7 @@ namespace ProductService.Services
             IsActive          = p.IsActive,
             QuantityAvailable = p.QuantityAvailable,
             QuantityReserved  = p.Inventory?.QuantityReserved  ?? 0,
+            LowStockThreshold = p.Inventory?.LowStockThreshold ?? 0,
             IsLowStock        = p.Inventory?.IsLowStock        ?? false,
             CreatedByUserId   = p.CreatedByUserId
         };

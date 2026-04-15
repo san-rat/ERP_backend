@@ -32,21 +32,23 @@ namespace ProductService.Controllers
         /// <param name="category">Filter by category name (exact, case-insensitive).</param>
         /// <param name="name">Filter by product name (partial match, case-insensitive).</param>
         [HttpGet]
-        [Authorize(Roles = "Admin,Employee")]
-        [ProducesResponseType(typeof(PaginatedResponse<ProductResponseDto>), 200)]
+        [Authorize(Roles = "Admin,ADMIN,Employee,USER")]
+        [ProducesResponseType(typeof(System.Collections.Generic.IEnumerable<ProductResponseDto>), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         public async Task<IActionResult> GetProducts(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize   = 10,
             [FromQuery] string? category = null,
+            [FromQuery] int? categoryId = null,
             [FromQuery] string? name     = null)
         {
             if (pageNumber <= 0 || pageSize <= 0)
                 return BadRequest("Invalid pagination parameters.");
 
-            var result = await _productManager.GetProductsAsync(pageNumber, pageSize, category, name);
-            return Ok(result);
+            var result = await _productManager.GetProductsAsync(pageNumber, pageSize, category, categoryId, name);
+            AddPaginationHeaders(result);
+            return Ok(result.Data);
         }
 
         // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
@@ -56,13 +58,14 @@ namespace ProductService.Controllers
         /// <summary>Searches for products strictly by item name (partial match).</summary>
         /// <param name="name">The name or partial name to search for.</param>
         [HttpGet("search/{name}")]
-        [Authorize(Roles = "Admin,Employee")]
-        [ProducesResponseType(typeof(PaginatedResponse<ProductResponseDto>), 200)]
+        [Authorize(Roles = "Admin,ADMIN,Employee,USER")]
+        [ProducesResponseType(typeof(System.Collections.Generic.IEnumerable<ProductResponseDto>), 200)]
         [ProducesResponseType(401)]
         public async Task<IActionResult> SearchProductsByName(string name)
         {
-            var result = await _productManager.GetProductsAsync(1, 100, null, name);
-            return Ok(result);
+            var result = await _productManager.GetProductsAsync(1, 100, null, null, name);
+            AddPaginationHeaders(result);
+            return Ok(result.Data);
         }
 
         // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
@@ -72,7 +75,7 @@ namespace ProductService.Controllers
         /// <summary>Returns a single product by its GUID identifier.</summary>
         /// <param name="id">Product GUID.</param>
         [HttpGet("{id:guid}")]
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = "Employee,USER")]
         [ProducesResponseType(typeof(ProductResponseDto), 200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(404)]
@@ -93,7 +96,7 @@ namespace ProductService.Controllers
         /// threshold can also be set here; defaults to 10.
         /// </remarks>
         [HttpPost]
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = "Employee,USER")]
         [ProducesResponseType(typeof(ProductResponseDto), 201)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
@@ -118,7 +121,7 @@ namespace ProductService.Controllers
         /// <param name="id">Product GUID to update.</param>
         /// <param name="dto">Updated product data.</param>
         [HttpPut("{id:guid}")]
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = "Employee,USER")]
         [ProducesResponseType(typeof(ProductResponseDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
@@ -142,7 +145,7 @@ namespace ProductService.Controllers
         /// </summary>
         /// <param name="id">Product GUID to delete.</param>
         [HttpDelete("{id:guid}")]
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = "Admin,ADMIN")]
         [ProducesResponseType(204)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
@@ -163,7 +166,7 @@ namespace ProductService.Controllers
         /// QuantityAvailable, QuantityReserved, TotalStock, and low-stock status.
         /// </summary>
         [HttpGet("stock")]
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = "Employee,USER")]
         [ProducesResponseType(typeof(System.Collections.Generic.IEnumerable<StockResponseDto>), 200)]
         [ProducesResponseType(401)]
         public async Task<IActionResult> GetStock()
@@ -179,7 +182,7 @@ namespace ProductService.Controllers
         /// <summary>Returns the current stock count for a specific product.</summary>
         /// <param name="id">Product GUID.</param>
         [HttpGet("{id:guid}/stock")]
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = "Employee,USER")]
         [ProducesResponseType(typeof(StockResponseDto), 200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(404)]
@@ -190,9 +193,9 @@ namespace ProductService.Controllers
             return Ok(stock);
         }
 
-        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        
         //  POST api/products/deduct-stock  ΓÇö DEDUCT stock on order placement
-        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        
 
         /// <summary>
         /// Deducts stock from a product when an order is placed.
@@ -201,7 +204,7 @@ namespace ProductService.Controllers
         /// Returns 409 Conflict when there is insufficient stock.
         /// </summary>
         [HttpPost("deduct-stock")]
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = "Employee,USER")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
@@ -216,6 +219,46 @@ namespace ProductService.Controllers
                 return Conflict(new { message });
 
             return Ok(new { message });
+        }
+
+        
+        //  ALERTS
+        
+
+        /// <summary>
+        /// Returns all low-stock alerts, optionally filtering by unresolved status.
+        /// </summary>
+        [HttpGet("alerts")]
+        [Authorize(Roles = "Admin,ADMIN,Employee,USER,Manager,MANAGER")]
+        [ProducesResponseType(typeof(System.Collections.Generic.IEnumerable<LowStockAlertDto>), 200)]
+        [ProducesResponseType(401)]
+        public async Task<IActionResult> GetAlerts([FromQuery] bool unresolvedOnly = false)
+        {
+            var alerts = await _productManager.GetLowStockAlertsAsync(unresolvedOnly);
+            return Ok(alerts);
+        }
+
+        /// <summary>
+        /// Marks a specific low-stock alert as resolved.
+        /// </summary>
+        [HttpPatch("alerts/{id:guid}/resolve")]
+        [Authorize(Roles = "Admin,ADMIN,Employee,USER,Manager,MANAGER")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> ResolveAlert(Guid id)
+        {
+            var success = await _productManager.ResolveAlertAsync(id);
+            if (!success) return NotFound(new { message = $"Alert {id} not found." });
+            return Ok(new { message = "Alert resolved successfully." });
+        }
+
+        private void AddPaginationHeaders<T>(PaginatedResponse<T> result)
+        {
+            Response.Headers["X-Page-Number"] = result.PageNumber.ToString();
+            Response.Headers["X-Page-Size"] = result.PageSize.ToString();
+            Response.Headers["X-Total-Records"] = result.TotalRecords.ToString();
+            Response.Headers["X-Total-Pages"] = result.TotalPages.ToString();
         }
     }
 }

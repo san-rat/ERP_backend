@@ -23,7 +23,7 @@ namespace OrderService.Controller
         // In a real microservice setup, this might be called by ApiGateway or e-commerce app
         // For demo/testing, we allow authenticated Employee role
         [HttpPost]
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = "Employee,USER")]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto dto)
         {
             var result = await _orderService.CreateOrderAsync(dto);
@@ -36,7 +36,7 @@ namespace OrderService.Controller
         // Manager -> can view too
         // Employee -> can also view if needed during processing
         [HttpGet]
-        [Authorize(Roles = "Admin,Manager,Employee")]
+        [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER,Employee,USER")]
         public async Task<IActionResult> GetAllOrders()
         {
             var result = await _orderService.GetAllOrdersAsync();
@@ -44,8 +44,8 @@ namespace OrderService.Controller
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "Admin,Manager,Employee")]
-        public async Task<IActionResult> GetOrderById(int id)
+        [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER,Employee,USER")]
+        public async Task<IActionResult> GetOrderById(Guid id)
         {
             var result = await _orderService.GetOrderByIdAsync(id);
             return Ok(ApiResponse<OrderResponseDto>.Ok("Order fetched successfully.", result));
@@ -53,8 +53,8 @@ namespace OrderService.Controller
 
         // Employee only can change order status
         [HttpPut("{id}/status")]
-        [Authorize(Roles = "Employee")]
-        public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] UpdateOrderStatusDto dto)
+        [Authorize(Roles = "Employee,USER")]
+        public async Task<IActionResult> UpdateOrderStatus(Guid id, [FromBody] UpdateOrderStatusDto dto)
         {
             var result = await _orderService.UpdateOrderStatusAsync(id, dto);
             return Ok(ApiResponse<OrderResponseDto>.Ok("Order status updated successfully.", result));
@@ -62,7 +62,7 @@ namespace OrderService.Controller
 
         // Manager only report endpoint
         [HttpGet("reports/summary")]
-        [Authorize(Roles = "Manager")]
+        [Authorize(Roles = "Manager,MANAGER")]
         public async Task<IActionResult> GetOrderReport()
         {
             var result = await _orderService.GetOrderReportAsync();
