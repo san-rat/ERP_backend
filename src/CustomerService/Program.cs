@@ -10,14 +10,11 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add controllers
 builder.Services.AddControllers();
 
-// Add logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
-// Add DbContext with MySQL
 builder.Services.AddDbContext<CustomerDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -26,12 +23,10 @@ builder.Services.AddDbContext<CustomerDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
 });
 
-// Dependency Injection
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddHttpClient<IProductProxyService, ProductProxyService>();
 builder.Services.AddHttpClient<IOrderProxyService, OrderProxyService>();
 
-// JWT Authentication
 var jwtKey = builder.Configuration["JwtSettings:SecretKey"]
     ?? throw new Exception("JWT SecretKey is missing.");
 var jwtIssuer = builder.Configuration["JwtSettings:Issuer"]
@@ -56,13 +51,13 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ValidIssuer = jwtIssuer,
         ValidAudience = jwtAudience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        RoleClaimType = "role"
     };
 });
 
 builder.Services.AddAuthorization();
 
-// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
@@ -73,7 +68,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Swagger + JWT support
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -108,7 +102,6 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// Global error handler
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
