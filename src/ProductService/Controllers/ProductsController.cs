@@ -193,9 +193,9 @@ namespace ProductService.Controllers
             return Ok(stock);
         }
 
-        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        
         //  POST api/products/deduct-stock  ΓÇö DEDUCT stock on order placement
-        // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        
 
         /// <summary>
         /// Deducts stock from a product when an order is placed.
@@ -219,6 +219,38 @@ namespace ProductService.Controllers
                 return Conflict(new { message });
 
             return Ok(new { message });
+        }
+
+        
+        //  ALERTS
+        
+
+        /// <summary>
+        /// Returns all low-stock alerts, optionally filtering by unresolved status.
+        /// </summary>
+        [HttpGet("alerts")]
+        [Authorize(Roles = "Admin,ADMIN,Employee,USER,Manager,MANAGER")]
+        [ProducesResponseType(typeof(System.Collections.Generic.IEnumerable<LowStockAlertDto>), 200)]
+        [ProducesResponseType(401)]
+        public async Task<IActionResult> GetAlerts([FromQuery] bool unresolvedOnly = false)
+        {
+            var alerts = await _productManager.GetLowStockAlertsAsync(unresolvedOnly);
+            return Ok(alerts);
+        }
+
+        /// <summary>
+        /// Marks a specific low-stock alert as resolved.
+        /// </summary>
+        [HttpPatch("alerts/{id:guid}/resolve")]
+        [Authorize(Roles = "Admin,ADMIN,Employee,USER,Manager,MANAGER")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> ResolveAlert(Guid id)
+        {
+            var success = await _productManager.ResolveAlertAsync(id);
+            if (!success) return NotFound(new { message = $"Alert {id} not found." });
+            return Ok(new { message = "Alert resolved successfully." });
         }
 
         private void AddPaginationHeaders<T>(PaginatedResponse<T> result)

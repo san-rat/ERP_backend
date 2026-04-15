@@ -11,12 +11,12 @@ namespace ProductService.Interfaces
         Task<PaginatedResponse<ProductResponseDto>> GetProductsAsync(int pageNumber, int pageSize, string? categoryName, int? categoryId, string? name);
         Task<ProductResponseDto?> GetProductByIdAsync(Guid id);
 
-        // ΓöÇΓöÇ Write ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ─── Write ─────────────────────────────────────────────────────────────────────────────────────────────────────────
         Task<ProductResponseDto> CreateProductAsync(CreateProductDto dto, Guid createdByUserId);
         Task<ProductResponseDto?> UpdateProductAsync(Guid id, UpdateProductDto dto);
         Task<bool> DeleteProductAsync(Guid id);
 
-        // ΓöÇΓöÇ Inventory ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ─── Inventory ─────────────────────────────────────────────────────────────────────────────────────────────────────────
         /// <summary>Returns stock information for all active products (with QuantityAvailable count).</summary>
         Task<IEnumerable<StockResponseDto>> GetStockAsync();
 
@@ -29,5 +29,12 @@ namespace ProductService.Interfaces
         /// alert if the threshold is crossed. Returns false when stock is insufficient.
         /// </summary>
         Task<(bool Success, string Message)> DeductStockAsync(DeductStockDto dto);
+
+        // ─── Alerts ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+        /// <summary>Returns all low-stock alerts, optionally filtering to unresolved only.</summary>
+        Task<IEnumerable<LowStockAlertDto>> GetLowStockAlertsAsync(bool unresolvedOnly = false);
+
+        /// <summary>Marks a low-stock alert as resolved.</summary>
+        Task<bool> ResolveAlertAsync(Guid alertId);
     }
 }
