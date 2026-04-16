@@ -11,7 +11,7 @@ builder.Services.AddScoped<IChurnPredictionService, ChurnPredictionService>();
 builder.Services.AddScoped<ITrainingDataRepository, TrainingDataRepository>();
 builder.Services.AddScoped<IModelRetrainingService, ModelRetrainingService>();
 builder.Services.AddHostedService<WeeklyModelRetrainingBackgroundService>();
-builder.Services.AddScoped<ChurnModelManager>();
+builder.Services.AddSingleton<ChurnModelManager>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
