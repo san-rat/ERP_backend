@@ -34,6 +34,20 @@
       ]
     },
     {
+      "DownstreamPathTemplate": "/db-check",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "authservice",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/auth/db-check",
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
+    },
+    {
       "DownstreamPathTemplate": "/swagger/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
@@ -46,6 +60,27 @@
       "UpstreamHttpMethod": [
         "GET"
       ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/customers/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "customerservice",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/api/customers/{everything}",
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
     },
     {
       "DownstreamPathTemplate": "/health",
@@ -140,6 +175,7 @@
         "GET",
         "POST",
         "PUT",
+        "PATCH",
         "DELETE",
         "OPTIONS"
       ],
@@ -177,7 +213,7 @@
       ]
     },
     {
-      "DownstreamPathTemplate": "/api/forecasting/forecast/{everything}",
+      "DownstreamPathTemplate": "/api/forecasting/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -185,44 +221,7 @@
           "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/api/ml/forecast/forecast/{everything}",
-      "UpstreamHttpMethod": [
-        "GET",
-        "POST",
-        "OPTIONS"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/forecasting/analytics/{everything}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "forecastservice",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/api/ml/forecast/analytics/{everything}",
-      "UpstreamHttpMethod": [
-        "GET",
-        "OPTIONS"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/forecasting/retraining/{everything}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "forecastservice",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/api/ml/forecast/retraining/{everything}",
+      "UpstreamPathTemplate": "/api/ml/forecast/{everything}",
       "UpstreamHttpMethod": [
         "GET",
         "POST",
@@ -262,7 +261,7 @@
       ]
     },
     {
-      "DownstreamPathTemplate": "/api/ml/predictions/{everything}",
+      "DownstreamPathTemplate": "/api/ml/churn/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -281,7 +280,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/ml/modelmanagement/{everything}",
+      "DownstreamPathTemplate": "/api/ml/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -290,6 +289,44 @@
         }
       ],
       "UpstreamPathTemplate": "/api/ml/model-management/{everything}",
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "OPTIONS"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/ml/segmentation/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "predictionservice",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/api/ml/segmentation/{everything}",
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "OPTIONS"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/ml/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "predictionservice",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/api/ml/{everything}",
       "UpstreamHttpMethod": [
         "GET",
         "POST",
@@ -315,6 +352,20 @@
       ]
     },
     {
+      "DownstreamPathTemplate": "/db-check",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "predictionservice",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/prediction/db-check",
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
+    },
+    {
       "DownstreamPathTemplate": "/swagger/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
@@ -327,6 +378,24 @@
       "UpstreamHttpMethod": [
         "GET"
       ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/dashboard/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "analyticsservice",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/api/dashboard/{everything}",
+      "UpstreamHttpMethod": [
+        "GET",
+        "OPTIONS"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
     },
     {
       "DownstreamPathTemplate": "/health",
