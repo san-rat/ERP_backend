@@ -33,16 +33,26 @@ public class ChurnRepository : IChurnRepository
                 return null;
             }
 
-            // ✅ FIXED: Only select columns that exist in the view
             const string query = @"
-                SELECT 
+                SELECT
                     customer_id,
-                    first_name,
-                    last_name,
-                    email,
-                    phone,
-                    created_at,
-                    updated_at
+                    days_since_last_order,
+                    total_orders,
+                    total_spent,
+                    avg_order_value,
+                    customer_tenure_days,
+                    unique_products_purchased,
+                    unique_categories_purchased,
+                    avg_products_per_order,
+                    total_returns,
+                    return_rate,
+                    total_refunded,
+                    completed_orders,
+                    cancelled_orders,
+                    cancellation_rate,
+                    account_age_days,
+                    days_since_last_activity,
+                    inactive_flag
                 FROM ml.v_customer_features_for_prediction
                 WHERE customer_id = @customerId";
 
@@ -61,33 +71,26 @@ public class ChurnRepository : IChurnRepository
                 return null;
             }
 
-            // Calculate derived features from available data
-            var createdAt = reader.GetDateTime(5);
-            var updatedAt = reader.GetDateTime(6);
-            var tenureDays = (int)(DateTime.UtcNow - createdAt).TotalDays;
-            var daysSinceActivity = (int)(DateTime.UtcNow - updatedAt).TotalDays;
-
             var features = new CustomerFeatures
             {
                 CustomerId = reader.GetGuid(0),
-                // Simple RFM: use tenure and inactivity as proxies
-                Recency = daysSinceActivity,  // Days since last activity
-                Frequency = 0,  // Would need order data, defaulting to 0
-                MonetaryValue = 0,  // Would need order data, defaulting to 0
-                AvgOrderValue = 0,  // Would need order data, defaulting to 0
-                TenureDays = tenureDays,  // Account age in days
-                ProductDiversity = 0,  // Would need product data
-                CategoryDiversity = 0,  // Would need category data
-                AvgProductsPerOrder = 0,  // Would need order data
-                ReturnCount = 0,  // Would need return data
-                ReturnRate = 0,  // Would need return data
-                TotalRefunded = 0,  // Would need refund data
-                CompletedOrders = 0,  // Would need order data
-                CancelledOrders = 0,  // Would need order data
-                CancellationRate = 0,  // Would need order data
-                AccountAgeDays = tenureDays,
-                DaysSinceActivity = daysSinceActivity,
-                InactiveFlag = daysSinceActivity > 180 ? 1 : 0  // Inactive if 180+ days
+                Recency = reader.GetInt32(1),
+                Frequency = reader.GetInt32(2),
+                MonetaryValue = reader.GetDecimal(3),
+                AvgOrderValue = reader.GetDecimal(4),
+                TenureDays = reader.GetInt32(5),
+                ProductDiversity = reader.GetInt32(6),
+                CategoryDiversity = reader.GetInt32(7),
+                AvgProductsPerOrder = Convert.ToDecimal(reader[8]),   // FLOAT in view
+                ReturnCount = reader.GetInt32(9),
+                ReturnRate = Convert.ToDecimal(reader[10]),            // FLOAT in view
+                TotalRefunded = reader.GetDecimal(11),
+                CompletedOrders = reader.GetInt32(12),
+                CancelledOrders = reader.GetInt32(13),
+                CancellationRate = Convert.ToDecimal(reader[14]),      // FLOAT in view
+                AccountAgeDays = reader.GetInt32(15),
+                DaysSinceActivity = reader.GetInt32(16),
+                InactiveFlag = reader.GetInt32(17)
             };
 
             _logger.LogInformation("✓ Features fetched for customer {CustomerId}", customerId);

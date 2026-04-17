@@ -20,10 +20,10 @@ namespace ForecastService.Controllers
         }
 
         /// <summary>
-        /// ✅ MAIN ENDPOINT: Manually trigger retraining for all products
+        /// Manually trigger retraining for all products (no body required)
         /// </summary>
         [HttpPost("trigger")]
-        public async Task<IActionResult> TriggerRetraining([FromBody] RetrainingRequest? request = null)
+        public async Task<IActionResult> TriggerRetraining()
         {
             try
             {
@@ -36,10 +36,9 @@ namespace ForecastService.Controllers
                     });
                 }
 
-                _logger.LogInformation("🔘 Manual retraining triggered - Reason: {Reason}",
-                    request?.Reason ?? "No reason provided");
+                _logger.LogInformation("Manual retraining triggered");
 
-                var result = await _retrainingService.TriggerRetrainingAsync(request?.Reason);
+                var result = await _retrainingService.TriggerRetrainingAsync("Manual Trigger");
 
                 return Ok(new
                 {
@@ -47,7 +46,13 @@ namespace ForecastService.Controllers
                     retrainingId = result.RetrainingId,
                     status = result.Status,
                     startedAt = result.StartedAt,
-                    message = "Retraining initiated successfully"
+                    totalProducts = result.TotalProductsRetrained,
+                    successCount = result.SuccessfullyTrained,
+                    failedCount = result.FailedCount,
+                    durationSeconds = (int)(result.DurationSeconds?.TotalSeconds ?? 0),
+                    message = result.Status == "COMPLETED"
+                        ? $"Retraining completed: {result.SuccessfullyTrained}/{result.TotalProductsRetrained} products retrained successfully"
+                        : result.ErrorMessage ?? "Retraining failed"
                 });
             }
             catch (Exception ex)

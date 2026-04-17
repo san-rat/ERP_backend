@@ -11,16 +11,16 @@ public class ChurnModelManager
     private ITransformer? _model;
     private readonly FeatureNormalizer _normalizer;
     private readonly ILogger<ChurnModelManager> _logger;
-    private readonly ITrainingDataRepository _trainingDataRepository;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public ChurnModelManager(
         ILogger<ChurnModelManager> logger,
-        ITrainingDataRepository trainingDataRepository)
+        IServiceScopeFactory scopeFactory)
     {
         _mlContext = new MLContext(seed: 42);
         _normalizer = new FeatureNormalizer();
         _logger = logger;
-        _trainingDataRepository = trainingDataRepository;
+        _scopeFactory = scopeFactory;
     }
 
     /// <summary>
@@ -38,9 +38,15 @@ public class ChurnModelManager
                 Status = "IN_PROGRESS"
             };
 
-            // STEP 1: Fetch ALL real data from database
+            // STEP 1: Fetch ALL real data from database using a fresh scope
             _logger.LogInformation("Fetching ALL training data from database...");
-            var trainingData = await _trainingDataRepository.GetAllTrainingDataAsync();
+            List<ChurnTrainingDataWithLabel> trainingData;
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var trainingDataRepository = scope.ServiceProvider
+                    .GetRequiredService<ITrainingDataRepository>();
+                trainingData = await trainingDataRepository.GetAllTrainingDataAsync();
+            }
 
             if (trainingData.Count == 0)
             {
@@ -55,7 +61,7 @@ public class ChurnModelManager
             result.ChurnedCount = trainingData.Count(x => x.Label);
             result.NonChurnedCount = trainingData.Count(x => !x.Label);
 
-            _logger.LogInformation("Distribution - Churned: {Churned}, Active: {Active}", 
+            _logger.LogInformation("Distribution - Churned: {Churned}, Active: {Active}",
                 result.ChurnedCount, result.NonChurnedCount);
 
             // STEP 2: Train model
@@ -63,7 +69,8 @@ public class ChurnModelManager
             var data = _mlContext.Data.LoadFromEnumerable(trainingData);
 
             var pipeline = _mlContext.Transforms.Concatenate("Features",
-                    new[] { 
+                    new[]
+                    {
                         nameof(ChurnTrainingDataWithLabel.Recency),
                         nameof(ChurnTrainingDataWithLabel.Frequency),
                         nameof(ChurnTrainingDataWithLabel.MonetaryValue),
@@ -79,8 +86,8 @@ public class ChurnModelManager
                     })
                 .Append(_mlContext.Transforms.NormalizeMinMax("Features"))
                 .Append(_mlContext.BinaryClassification.Trainers.SdcaLogisticRegression(
-                        labelColumnName: nameof(ChurnTrainingDataWithLabel.Label),
-                        featureColumnName: "Features")); 
+                    labelColumnName: nameof(ChurnTrainingDataWithLabel.Label),
+                    featureColumnName: "Features"));
 
             _model = pipeline.Fit(data);
             _logger.LogInformation("✓ Model trained successfully");
@@ -97,12 +104,14 @@ public class ChurnModelManager
 
             _logger.LogInformation(
                 "✓ Model Metrics - Accuracy: {Accuracy:P2}, Precision: {Precision:P2}, Recall: {Recall:P2}, AUC: {AUC:P2}",
-                metrics.Accuracy, metrics.PositivePrecision, metrics.PositiveRecall, metrics.AreaUnderRocCurve);
+                metrics.Accuracy, metrics.PositivePrecision, metrics.PositiveRecall,
+                metrics.AreaUnderRocCurve);
 
             result.Status = "COMPLETED";
             result.TrainingEndTime = DateTime.UtcNow;
 
-            _logger.LogInformation("Training completed in {Duration} seconds", result.Duration.TotalSeconds);
+            _logger.LogInformation("Training completed in {Duration} seconds",
+                result.Duration.TotalSeconds);
 
             return result;
         }
@@ -123,7 +132,7 @@ public class ChurnModelManager
     /// Make prediction using current model
     /// </summary>
     public virtual (decimal probability, string riskLabel, List<(string, decimal)> featureImportance)
-    PredictChurn(CustomerFeatures features)
+        PredictChurn(CustomerFeatures features)
     {
         if (_model == null)
             return (0.5m, "UNKNOWN", new List<(string, decimal)>());
@@ -148,7 +157,8 @@ public class ChurnModelManager
                 InactiveFlag = normalizedFeatures[11]
             };
 
-            var predictionEngine = _mlContext.Model.CreatePredictionEngine<ChurnModelInput, ChurnModelOutput>(_model);
+            var predictionEngine = _mlContext.Model
+                .CreatePredictionEngine<ChurnModelInput, ChurnModelOutput>(_model);
             var prediction = predictionEngine.Predict(input);
 
             var probability = (decimal)prediction.Probability;

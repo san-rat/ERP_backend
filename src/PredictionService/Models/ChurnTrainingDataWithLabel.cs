@@ -2,6 +2,9 @@ namespace PredictionService.Models;
 
 public class ChurnTrainingDataWithLabel
 {
+    
+    [Microsoft.ML.Data.NoColumn]
+
     public Guid CustomerId { get; set; }
     public float Recency { get; set; }
     public float Frequency { get; set; }
