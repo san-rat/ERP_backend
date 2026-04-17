@@ -7,10 +7,11 @@ CREATE INDEX idx_modelversions_date ON ml.model_versions(training_date);
 CREATE INDEX idx_history_modelversion ON ml.training_history(model_version_id);
 CREATE INDEX idx_history_status ON ml.training_history(training_status);
 CREATE INDEX idx_history_starttime ON ml.training_history(training_start_time);
+GO
 
 -- RFM METRICS VIEW
 CREATE VIEW ml.v_customer_rfm AS
-SELECT 
+SELECT
     c.id AS customer_id,
     COALESCE(DATEDIFF(DAY, MAX(o.created_at), GETUTCDATE()), 999) AS days_since_last_order,
     COUNT(DISTINCT o.id) AS total_orders,
@@ -20,68 +21,73 @@ SELECT
 FROM dbo.customers c
 LEFT JOIN dbo.orders o ON c.id = o.customer_id AND o.status != 'CANCELLED'
 GROUP BY c.id, c.created_at;
+GO
 
 -- PRODUCT DIVERSITY VIEW
 CREATE VIEW ml.v_customer_product_diversity AS
-SELECT 
+SELECT
     c.id AS customer_id,
     COUNT(DISTINCT oi.product_id) AS unique_products_purchased,
     COUNT(DISTINCT p.category_id) AS unique_categories_purchased,
-    CASE 
+    CASE
         WHEN COUNT(DISTINCT o.id) = 0 THEN 0
-        ELSE CAST(COUNT(oi.id) AS FLOAT) / COUNT(DISTINCT o.id)
+        ELSE CAST(COUNT(oi.id) AS DECIMAL(10, 4)) / COUNT(DISTINCT o.id)
     END AS avg_products_per_order
 FROM dbo.customers c
 LEFT JOIN dbo.orders o ON c.id = o.customer_id AND o.status != 'CANCELLED'
 LEFT JOIN dbo.order_items oi ON o.id = oi.order_id
 LEFT JOIN dbo.products p ON oi.product_id = p.id
 GROUP BY c.id;
+GO
 
 -- RETURN BEHAVIOR VIEW
 CREATE VIEW ml.v_customer_return_behavior AS
-SELECT 
+SELECT
     c.id AS customer_id,
     COUNT(DISTINCT r.id) AS total_returns,
-    CASE 
+    CASE
         WHEN COUNT(DISTINCT o.id) = 0 THEN 0
-        ELSE CAST(COUNT(DISTINCT r.id) AS FLOAT) / COUNT(DISTINCT o.id)
+        ELSE CAST(COUNT(DISTINCT r.id) AS DECIMAL(10, 4)) / COUNT(DISTINCT o.id)
     END AS return_rate,
     COALESCE(SUM(r.refund_amount), 0) AS total_refunded
 FROM dbo.customers c
 LEFT JOIN dbo.orders o ON c.id = o.customer_id
 LEFT JOIN dbo.returns r ON o.id = r.order_id AND r.status IN ('APPROVED', 'COMPLETED')
 GROUP BY c.id;
+GO
 
 -- ORDER STATUS VIEW
 CREATE VIEW ml.v_customer_order_status AS
-SELECT 
+SELECT
     c.id AS customer_id,
     SUM(CASE WHEN o.status = 'DELIVERED' THEN 1 ELSE 0 END) AS completed_orders,
     SUM(CASE WHEN o.status = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled_orders,
-    CASE 
+    CASE
         WHEN COUNT(o.id) = 0 THEN 0
-        ELSE CAST(SUM(CASE WHEN o.status = 'CANCELLED' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(o.id)
+        ELSE CAST(SUM(CASE WHEN o.status = 'CANCELLED' THEN 1 ELSE 0 END) AS DECIMAL(10, 4)) / COUNT(o.id)
     END AS cancellation_rate
 FROM dbo.customers c
 LEFT JOIN dbo.orders o ON c.id = o.customer_id
 GROUP BY c.id;
+GO
 
 -- ENGAGEMENT VIEW
 CREATE VIEW ml.v_customer_engagement AS
-SELECT 
+SELECT
     c.id AS customer_id,
     DATEDIFF(DAY, c.created_at, GETUTCDATE()) AS account_age_days,
     DATEDIFF(DAY, c.updated_at, GETUTCDATE()) AS days_since_last_update,
-    CASE 
+    CASE
         WHEN DATEDIFF(DAY, c.updated_at, GETUTCDATE()) > 180 THEN 1
         ELSE 0
     END AS inactive_flag
 FROM dbo.customers c;
+GO
 
 -- ALL 18 ML FEATURES (MAIN VIEW)
 CREATE VIEW ml.v_customer_features_for_prediction AS
-SELECT 
-    ISNULL(rfm.customer_id, ISNULL(pd.customer_id, ISNULL(rb.customer_id, 
+SELECT
+    ISNULL(rfm.customer_id, ISNULL(pd.customer_id, ISNULL(rb.customer_id,
         ISNULL(os.customer_id, eg.customer_id)))) AS customer_id,
     ISNULL(rfm.days_since_last_order, 999) AS days_since_last_order,
     ISNULL(rfm.total_orders, 0) AS total_orders,
@@ -105,5 +111,6 @@ FULL OUTER JOIN ml.v_customer_product_diversity pd ON rfm.customer_id = pd.custo
 FULL OUTER JOIN ml.v_customer_return_behavior rb ON rfm.customer_id = rb.customer_id
 FULL OUTER JOIN ml.v_customer_order_status os ON rfm.customer_id = os.customer_id
 FULL OUTER JOIN ml.v_customer_engagement eg ON rfm.customer_id = eg.customer_id
-WHERE ISNULL(rfm.customer_id, ISNULL(pd.customer_id, ISNULL(rb.customer_id, 
+WHERE ISNULL(rfm.customer_id, ISNULL(pd.customer_id, ISNULL(rb.customer_id,
     ISNULL(os.customer_id, eg.customer_id)))) IS NOT NULL;
+GO

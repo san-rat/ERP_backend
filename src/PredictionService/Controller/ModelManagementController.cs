@@ -4,7 +4,7 @@ using PredictionService.Services;
 namespace PredictionService.Controllers;
 
 [ApiController]
-[Route("api/ml/[controller]")]
+[Route("api/ml")]
 public class ModelManagementController : ControllerBase
 {
     private readonly IModelRetrainingService _retrainingService;

@@ -16,7 +16,12 @@ public class TrainingDataRepository : ITrainingDataRepository
     }
 
     /// <summary>
-    /// Fetch ALL customer data from database for training
+    /// Fetch ALL customer data from database for training.
+    /// Churn label is determined by multiple risk signals:
+    ///   - Never placed an order
+    ///   - No order in 90+ days
+    ///   - Cancellation rate above 50%
+    ///   - Return rate above 40%
     /// </summary>
     public async Task<List<ChurnTrainingDataWithLabel>> GetAllTrainingDataAsync()
     {
@@ -34,21 +39,30 @@ public class TrainingDataRepository : ITrainingDataRepository
             const string query = @"
                 SELECT 
                     c.id AS customer_id,
-                    ISNULL(f.days_since_last_order, 999) AS recency,
-                    ISNULL(f.total_orders, 0) AS frequency,
-                    ISNULL(f.total_spent, 0) AS monetary_value,
-                    ISNULL(f.avg_order_value, 0) AS avg_order_value,
-                    ISNULL(f.customer_tenure_days, 0) AS tenure_days,
-                    ISNULL(f.unique_products_purchased, 0) AS product_diversity,
-                    ISNULL(f.total_returns, 0) AS return_count,
-                    ISNULL(f.return_rate, 0) AS return_rate,
-                    ISNULL(f.cancellation_rate, 0) AS cancellation_rate,
-                    ISNULL(f.completed_orders, 0) AS completed_orders,
-                    ISNULL(f.cancelled_orders, 0) AS cancelled_orders,
-                    ISNULL(f.inactive_flag, 0) AS inactive_flag,
-                    CASE 
-                        WHEN ISNULL(f.days_since_last_order, 999) > 180 
-                             AND ISNULL(f.inactive_flag, 0) = 1
+                    ISNULL(f.days_since_last_order, 999)            AS recency,
+                    ISNULL(f.total_orders, 0)                       AS frequency,
+                    ISNULL(f.total_spent, 0)                        AS monetary_value,
+                    ISNULL(f.avg_order_value, 0)                    AS avg_order_value,
+                    ISNULL(f.customer_tenure_days, 0)               AS tenure_days,
+                    ISNULL(f.unique_products_purchased, 0)          AS product_diversity,
+                    ISNULL(f.total_returns, 0)                      AS return_count,
+                    CAST(ISNULL(f.return_rate, 0) AS FLOAT)         AS return_rate,
+                    CAST(ISNULL(f.cancellation_rate, 0) AS FLOAT)   AS cancellation_rate,
+                    ISNULL(f.completed_orders, 0)                   AS completed_orders,
+                    ISNULL(f.cancelled_orders, 0)                   AS cancelled_orders,
+                    ISNULL(f.inactive_flag, 0)                      AS inactive_flag,
+                    CASE
+                        -- Never placed an order
+                        WHEN ISNULL(f.total_orders, 0) = 0
+                        THEN 1
+                        -- No order in 90+ days
+                        WHEN ISNULL(f.days_since_last_order, 999) > 90
+                        THEN 1
+                        -- Cancelled more than half of their orders
+                        WHEN CAST(ISNULL(f.cancellation_rate, 0) AS FLOAT) > 0.5
+                        THEN 1
+                        -- High return rate
+                        WHEN CAST(ISNULL(f.return_rate, 0) AS FLOAT) > 0.4
                         THEN 1
                         ELSE 0
                     END AS label
@@ -72,34 +86,32 @@ public class TrainingDataRepository : ITrainingDataRepository
             {
                 trainingData.Add(new ChurnTrainingDataWithLabel
                 {
-                    CustomerId = reader.GetGuid(0),
-                    Recency = SafeGetFloat(reader, 1),
-                    Frequency = SafeGetFloat(reader, 2),
-                    MonetaryValue = SafeGetFloat(reader, 3),
-                    AvgOrderValue = SafeGetFloat(reader, 4),
-                    TenureDays = SafeGetFloat(reader, 5),
+                    CustomerId       = reader.GetGuid(0),
+                    Recency          = SafeGetFloat(reader, 1),
+                    Frequency        = SafeGetFloat(reader, 2),
+                    MonetaryValue    = SafeGetFloat(reader, 3),
+                    AvgOrderValue    = SafeGetFloat(reader, 4),
+                    TenureDays       = SafeGetFloat(reader, 5),
                     ProductDiversity = SafeGetFloat(reader, 6),
-                    ReturnCount = SafeGetFloat(reader, 7),
-                    ReturnRate = SafeGetFloat(reader, 8),
+                    ReturnCount      = SafeGetFloat(reader, 7),
+                    ReturnRate       = SafeGetFloat(reader, 8),
                     CancellationRate = SafeGetFloat(reader, 9),
-                    CompletedOrders = SafeGetFloat(reader, 10),
-                    CancelledOrders = SafeGetFloat(reader, 11),
-                    InactiveFlag = SafeGetFloat(reader, 12),
-                    Label = reader.GetInt32(13) == 1
+                    CompletedOrders  = SafeGetFloat(reader, 10),
+                    CancelledOrders  = SafeGetFloat(reader, 11),
+                    InactiveFlag     = SafeGetFloat(reader, 12),
+                    Label            = reader.GetInt32(13) == 1
                 });
                 recordCount++;
 
                 if (recordCount % 1000 == 0)
-                {
                     _logger.LogInformation("Fetched {Count} records so far...", recordCount);
-                }
             }
 
             _logger.LogInformation("Completed fetching ALL {Count} training records", trainingData.Count);
-            
+
             int churnedCount = trainingData.Count(x => x.Label);
-            int activeCount = trainingData.Count - churnedCount;
-            _logger.LogInformation("Churn distribution - Churned: {Churned}, Active: {Active}", 
+            int activeCount  = trainingData.Count - churnedCount;
+            _logger.LogInformation("Churn distribution - Churned: {Churned}, Active: {Active}",
                 churnedCount, activeCount);
 
             return trainingData;
@@ -111,6 +123,9 @@ public class TrainingDataRepository : ITrainingDataRepository
         }
     }
 
+    /// <summary>
+    /// Save or update training history (UPSERT to avoid duplicate PK on second save)
+    /// </summary>
     public async Task SaveTrainingHistoryAsync(TrainingHistory history)
     {
         try
@@ -118,27 +133,38 @@ public class TrainingDataRepository : ITrainingDataRepository
             var connectionString = _config.GetConnectionString(ConnectionName);
 
             const string query = @"
-                INSERT INTO ml.training_history
-                (id, model_version_id, training_start_time, training_end_time, training_status, 
-                 total_records_used, churned_count, non_churned_count, error_message, triggered_by, created_at)
-                VALUES
-                (@id, @modelVersionId, @startTime, @endTime, @status, @recordCount, 
-                 @churnedCount, @nonChurnedCount, @errorMessage, @triggeredBy, GETUTCDATE())";
+                IF EXISTS (SELECT 1 FROM ml.training_history WHERE id = @id)
+                    UPDATE ml.training_history SET
+                        model_version_id   = @modelVersionId,
+                        training_end_time  = @endTime,
+                        training_status    = @status,
+                        total_records_used = @recordCount,
+                        churned_count      = @churnedCount,
+                        non_churned_count  = @nonChurnedCount,
+                        error_message      = @errorMessage
+                    WHERE id = @id
+                ELSE
+                    INSERT INTO ml.training_history
+                    (id, model_version_id, training_start_time, training_end_time, training_status,
+                     total_records_used, churned_count, non_churned_count, error_message, triggered_by, created_at)
+                    VALUES
+                    (@id, @modelVersionId, @startTime, @endTime, @status, @recordCount,
+                     @churnedCount, @nonChurnedCount, @errorMessage, @triggeredBy, GETUTCDATE())";
 
             await using var connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
 
             await using var command = new SqlCommand(query, connection);
-            command.Parameters.AddWithValue("@id", history.Id);
-            command.Parameters.AddWithValue("@modelVersionId", history.ModelVersionId ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("@startTime", history.TrainingStartTime);
-            command.Parameters.AddWithValue("@endTime", history.TrainingEndTime ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("@status", history.TrainingStatus);
-            command.Parameters.AddWithValue("@recordCount", history.TotalRecordsUsed ?? 0);
-            command.Parameters.AddWithValue("@churnedCount", history.ChurnedCount ?? 0);
+            command.Parameters.AddWithValue("@id",              history.Id);
+            command.Parameters.AddWithValue("@modelVersionId",  history.ModelVersionId ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@startTime",       history.TrainingStartTime);
+            command.Parameters.AddWithValue("@endTime",         history.TrainingEndTime ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@status",          history.TrainingStatus);
+            command.Parameters.AddWithValue("@recordCount",     history.TotalRecordsUsed ?? 0);
+            command.Parameters.AddWithValue("@churnedCount",    history.ChurnedCount ?? 0);
             command.Parameters.AddWithValue("@nonChurnedCount", history.NonChurnedCount ?? 0);
-            command.Parameters.AddWithValue("@errorMessage", (object?)history.ErrorMessage ?? DBNull.Value);
-            command.Parameters.AddWithValue("@triggeredBy", history.TriggeredBy);
+            command.Parameters.AddWithValue("@errorMessage",    (object?)history.ErrorMessage ?? DBNull.Value);
+            command.Parameters.AddWithValue("@triggeredBy",     history.TriggeredBy);
 
             await command.ExecuteNonQueryAsync();
             _logger.LogInformation("Training history saved with status: {Status}", history.TrainingStatus);
@@ -158,26 +184,26 @@ public class TrainingDataRepository : ITrainingDataRepository
 
             const string query = @"
                 INSERT INTO ml.model_versions
-                (id, model_version, algorithm, training_date, training_data_count, 
+                (id, model_version, algorithm, training_date, training_data_count,
                  accuracy, precision, recall, auc_roc, total_features, is_active, created_at)
                 VALUES
-                (@id, @version, @algorithm, @trainingDate, @dataCount, 
+                (@id, @version, @algorithm, @trainingDate, @dataCount,
                  @accuracy, @precision, @recall, @aucRoc, @features, 0, GETUTCDATE())";
 
             await using var connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
 
             await using var command = new SqlCommand(query, connection);
-            command.Parameters.AddWithValue("@id", modelId);
-            command.Parameters.AddWithValue("@version", modelInfo.ModelVersion);
-            command.Parameters.AddWithValue("@algorithm", modelInfo.Algorithm);
+            command.Parameters.AddWithValue("@id",           modelId);
+            command.Parameters.AddWithValue("@version",      modelInfo.ModelVersion);
+            command.Parameters.AddWithValue("@algorithm",    modelInfo.Algorithm);
             command.Parameters.AddWithValue("@trainingDate", modelInfo.TrainingDate);
-            command.Parameters.AddWithValue("@dataCount", modelInfo.TrainingDataCount);
-            command.Parameters.AddWithValue("@accuracy", modelInfo.Accuracy ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("@precision", modelInfo.Precision ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("@recall", modelInfo.Recall ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("@aucRoc", modelInfo.AucRoc ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("@features", 12);
+            command.Parameters.AddWithValue("@dataCount",    modelInfo.TrainingDataCount);
+            command.Parameters.AddWithValue("@accuracy",     modelInfo.Accuracy  ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@precision",    modelInfo.Precision ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@recall",       modelInfo.Recall    ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@aucRoc",       modelInfo.AucRoc    ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@features",     12);
 
             await command.ExecuteNonQueryAsync();
             _logger.LogInformation("Model version saved: {ModelVersion}", modelInfo.ModelVersion);
@@ -237,21 +263,21 @@ public class TrainingDataRepository : ITrainingDataRepository
             await connection.OpenAsync();
 
             await using var command = new SqlCommand(query, connection);
-            await using var reader = await command.ExecuteReaderAsync();
+            await using var reader  = await command.ExecuteReaderAsync();
 
             if (await reader.ReadAsync())
             {
                 return new ModelVersionInfo
                 {
-                    Id = reader.GetGuid(0),
-                    ModelVersion = reader.GetString(1),
-                    Algorithm = reader.GetString(2),
-                    TrainingDate = reader.GetDateTime(3),
+                    Id                = reader.GetGuid(0),
+                    ModelVersion      = reader.GetString(1),
+                    Algorithm         = reader.GetString(2),
+                    TrainingDate      = reader.GetDateTime(3),
                     TrainingDataCount = reader.GetInt32(4),
-                    Accuracy = reader.IsDBNull(5) ? null : reader.GetDecimal(5),
+                    Accuracy  = reader.IsDBNull(5) ? null : reader.GetDecimal(5),
                     Precision = reader.IsDBNull(6) ? null : reader.GetDecimal(6),
-                    Recall = reader.IsDBNull(7) ? null : reader.GetDecimal(7),
-                    AucRoc = reader.IsDBNull(8) ? null : reader.GetDecimal(8)
+                    Recall    = reader.IsDBNull(7) ? null : reader.GetDecimal(7),
+                    AucRoc    = reader.IsDBNull(8) ? null : reader.GetDecimal(8)
                 };
             }
 
@@ -282,21 +308,21 @@ public class TrainingDataRepository : ITrainingDataRepository
             await connection.OpenAsync();
 
             await using var command = new SqlCommand(query, connection);
-            await using var reader = await command.ExecuteReaderAsync();
+            await using var reader  = await command.ExecuteReaderAsync();
 
             while (await reader.ReadAsync())
             {
                 models.Add(new ModelVersionInfo
                 {
-                    Id = reader.GetGuid(0),
-                    ModelVersion = reader.GetString(1),
-                    Algorithm = reader.GetString(2),
-                    TrainingDate = reader.GetDateTime(3),
+                    Id                = reader.GetGuid(0),
+                    ModelVersion      = reader.GetString(1),
+                    Algorithm         = reader.GetString(2),
+                    TrainingDate      = reader.GetDateTime(3),
                     TrainingDataCount = reader.GetInt32(4),
-                    Accuracy = reader.IsDBNull(5) ? null : reader.GetDecimal(5),
+                    Accuracy  = reader.IsDBNull(5) ? null : reader.GetDecimal(5),
                     Precision = reader.IsDBNull(6) ? null : reader.GetDecimal(6),
-                    Recall = reader.IsDBNull(7) ? null : reader.GetDecimal(7),
-                    AucRoc = reader.IsDBNull(8) ? null : reader.GetDecimal(8)
+                    Recall    = reader.IsDBNull(7) ? null : reader.GetDecimal(7),
+                    AucRoc    = reader.IsDBNull(8) ? null : reader.GetDecimal(8)
                 });
             }
 
@@ -336,16 +362,16 @@ public class TrainingDataRepository : ITrainingDataRepository
             {
                 history.Add(new TrainingHistory
                 {
-                    Id = reader.GetGuid(0),
-                    ModelVersionId = reader.IsDBNull(1) ? null : reader.GetGuid(1),
+                    Id                = reader.GetGuid(0),
+                    ModelVersionId    = reader.IsDBNull(1) ? null : reader.GetGuid(1),
                     TrainingStartTime = reader.GetDateTime(2),
-                    TrainingEndTime = reader.IsDBNull(3) ? null : reader.GetDateTime(3),
-                    TrainingStatus = reader.GetString(4),
-                    TotalRecordsUsed = reader.IsDBNull(5) ? null : reader.GetInt32(5),
-                    ChurnedCount = reader.IsDBNull(6) ? null : reader.GetInt32(6),
-                    NonChurnedCount = reader.IsDBNull(7) ? null : reader.GetInt32(7),
-                    ErrorMessage = reader.IsDBNull(8) ? null : reader.GetString(8),
-                    TriggeredBy = reader.GetString(9)
+                    TrainingEndTime   = reader.IsDBNull(3) ? null : reader.GetDateTime(3),
+                    TrainingStatus    = reader.GetString(4),
+                    TotalRecordsUsed  = reader.IsDBNull(5) ? null : reader.GetInt32(5),
+                    ChurnedCount      = reader.IsDBNull(6) ? null : reader.GetInt32(6),
+                    NonChurnedCount   = reader.IsDBNull(7) ? null : reader.GetInt32(7),
+                    ErrorMessage      = reader.IsDBNull(8) ? null : reader.GetString(8),
+                    TriggeredBy       = reader.GetString(9)
                 });
             }
 
@@ -358,8 +384,22 @@ public class TrainingDataRepository : ITrainingDataRepository
         }
     }
 
+    /// <summary>
+    /// Safely reads any numeric SQL column as float regardless of underlying type.
+    /// Handles INT, BIGINT, FLOAT, DECIMAL, REAL from SQL Server.
+    /// </summary>
     private static float SafeGetFloat(SqlDataReader reader, int ordinal)
     {
-        return reader.IsDBNull(ordinal) ? 0f : (float)reader.GetDouble(ordinal);
+        if (reader.IsDBNull(ordinal)) return 0f;
+
+        var fieldType = reader.GetFieldType(ordinal);
+
+        if (fieldType == typeof(double))  return (float)reader.GetDouble(ordinal);
+        if (fieldType == typeof(decimal)) return (float)reader.GetDecimal(ordinal);
+        if (fieldType == typeof(int))     return (float)reader.GetInt32(ordinal);
+        if (fieldType == typeof(long))    return (float)reader.GetInt64(ordinal);
+        if (fieldType == typeof(float))   return reader.GetFloat(ordinal);
+
+        return Convert.ToSingle(reader.GetValue(ordinal));
     }
 }

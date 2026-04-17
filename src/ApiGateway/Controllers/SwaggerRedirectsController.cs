@@ -7,27 +7,12 @@ namespace ApiGateway.Controllers;
 [Route("")]
 public class SwaggerRedirectsController : ControllerBase
 {
-    private static readonly HashSet<string> SupportedServices = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "auth",
-        "customer",
-        "order",
-        "product",
-        "forecast",
-        "prediction",
-        "analytics",
-        "admin"
-    };
+    [AllowAnonymous]
+    [HttpGet("apigateway/swagger")]
+    [HttpGet("apigateway/swagger/index.html")]
+    public IActionResult RedirectToGatewaySwagger() => LocalRedirect("/swagger/index.html");
 
     [AllowAnonymous]
-    [HttpGet("{service}/swagger")]
-    public IActionResult RedirectToServiceSwagger(string service)
-    {
-        if (!SupportedServices.Contains(service))
-        {
-            return NotFound();
-        }
-
-        return LocalRedirect($"/{service}/swagger/index.html");
-    }
+    [HttpGet("apigateway/swagger/v1/swagger.json")]
+    public IActionResult RedirectToGatewaySwaggerJson() => LocalRedirect("/swagger/v1/swagger.json");
 }

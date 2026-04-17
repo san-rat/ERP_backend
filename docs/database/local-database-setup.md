@@ -98,6 +98,10 @@ Gateway-backed Swagger entrypoints for the Docker-local workflow:
 - `http://localhost:5000/analytics/swagger`
 - `http://localhost:5000/admin/swagger`
 
+Related troubleshooting note for the April 16, 2026 ML and Swagger Docker fix:
+
+- [Docker ML Routing and Swagger Fix](/mnt/c/Users/User/Desktop/coding/projects/2026/ERP_backend/docs/DevOps/docker-ml-routing-and-swagger-fix.md)
+
 ## What The Script Does
 
 `setup-local-db.ps1` performs these steps:
