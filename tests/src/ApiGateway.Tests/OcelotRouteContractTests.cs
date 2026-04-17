@@ -5,12 +5,12 @@ namespace ApiGateway.Tests;
 
 public class OcelotRouteContractTests
 {
-    public static TheoryData<string> OcelotFiles =>
+    public static IEnumerable<object[]> OcelotFiles =>
     [
-        "src/ApiGateway/ocelot.json",
-        "src/ApiGateway/ocelot.Docker.json",
-        "src/ApiGateway/ocelot.Dev.json",
-        "src/ApiGateway/ocelot.Production.json"
+        new object[] { "src/ApiGateway/ocelot.json" },
+        new object[] { "src/ApiGateway/ocelot.Docker.json" },
+        new object[] { "src/ApiGateway/ocelot.Dev.json" },
+        new object[] { "src/ApiGateway/ocelot.Production.json" },
     ];
 
     [Theory]
