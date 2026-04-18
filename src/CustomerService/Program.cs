@@ -6,29 +6,21 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
-// ✅ FIX: Instead of ServerVersion.AutoDetect (which connects immediately and crashes
-//         if MySQL isn't up), we specify the MySQL version manually.
-//         MySqlServerVersion(new Version(8, 0, 36)) means MySQL 8.0.36 —
-//         adjust the numbers to match your actual MySQL version if needed.
-//         Common versions: 8.0.x, 5.7.x. If you're using MariaDB use MariaDbServerVersion instead.
 builder.Services.AddDbContext<CustomerDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
         ?? throw new Exception("DefaultConnection is missing from appsettings.json.");
 
-    options.UseMySql(
-        connectionString,
-        new MySqlServerVersion(new Version(8, 0, 36)) // ✅ Fixed version — no live connection needed at startup
-    );
+    options.UseSqlServer(connectionString);
 });
 
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -60,6 +52,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtIssuer,
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        NameClaimType = ClaimTypes.Name,
         RoleClaimType = "role"
     };
 });
@@ -111,13 +104,10 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 app.UseMiddleware<ErrorHandlingMiddleware>();
-
-// ✅ FIX: Swagger was registered twice in your original code.
-//         Keep it only here, outside the if-block, so it always works.
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "CustomerService API v1"); // ✅ Fixed path (was "v1/swagger.json")
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "CustomerService API v1");
     c.RoutePrefix = "swagger";
 });
 
@@ -125,23 +115,11 @@ app.UseCors("FrontendPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
-// ✅ FIX: Wrap EnsureCreated in a try/catch so a DB connection failure at startup
-//         gives you a clear warning instead of crashing the whole app.
 using (var scope = app.Services.CreateScope())
 {
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    try
-    {
-        var dbContext = scope.ServiceProvider.GetRequiredService<CustomerDbContext>();
-        dbContext.Database.EnsureCreated();
-        logger.LogInformation("✅ Database connection successful and schema ensured.");
-    }
-    catch (Exception ex)
-    {
-        logger.LogWarning("⚠️ Could not connect to the database at startup: {Message}", ex.Message);
-        logger.LogWarning("The app will still start. Fix your DB connection and restart.");
-    }
+    var dbContext = scope.ServiceProvider.GetRequiredService<CustomerDbContext>();
+    dbContext.Database.OpenConnection();
+    dbContext.Database.CloseConnection();
 }
 
 app.Run();

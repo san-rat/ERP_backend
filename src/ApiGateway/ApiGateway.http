@@ -11,11 +11,6 @@ GET {{ApiGateway_HostAddress}}/auth/health
 Accept: application/json
 
 ###
-# Proxy — CustomerService health (no token)
-GET {{ApiGateway_HostAddress}}/customer/health
-Accept: application/json
-
-###
 # Proxy — OrderService health (no token)
 GET {{ApiGateway_HostAddress}}/order/health
 Accept: application/json

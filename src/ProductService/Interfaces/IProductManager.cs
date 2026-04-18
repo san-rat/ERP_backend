@@ -9,7 +9,9 @@ namespace ProductService.Interfaces
     {
         // ΓöÇΓöÇ Read ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         Task<PaginatedResponse<ProductResponseDto>> GetProductsAsync(int pageNumber, int pageSize, string? categoryName, int? categoryId, string? name);
+        Task<PaginatedResponse<ProductResponseDto>> GetCatalogProductsAsync(int pageNumber, int pageSize, string? categoryName, int? categoryId, string? name);
         Task<ProductResponseDto?> GetProductByIdAsync(Guid id);
+        Task<IReadOnlyList<ProductResponseDto>> ResolveProductsAsync(IEnumerable<Guid> productIds);
 
         // ─── Write ─────────────────────────────────────────────────────────────────────────────────────────────────────────
         Task<ProductResponseDto> CreateProductAsync(CreateProductDto dto, Guid createdByUserId);
@@ -29,6 +31,7 @@ namespace ProductService.Interfaces
         /// alert if the threshold is crossed. Returns false when stock is insufficient.
         /// </summary>
         Task<(bool Success, string Message)> DeductStockAsync(DeductStockDto dto);
+        Task<(bool Success, string Message)> ReleaseStockAsync(ReleaseStockDto dto);
 
         // ─── Alerts ────────────────────────────────────────────────────────────────────────────────────────────────────────────
         /// <summary>Returns all low-stock alerts, optionally filtering to unresolved only.</summary>

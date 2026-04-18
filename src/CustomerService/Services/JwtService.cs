@@ -27,6 +27,8 @@ namespace CustomerService.Services
             {
                 new Claim(ClaimTypes.NameIdentifier, customer.Id.ToString()),
                 new Claim(ClaimTypes.Name, customer.FullName),
+                new Claim(ClaimTypes.GivenName, customer.FirstName),
+                new Claim(ClaimTypes.Surname, customer.LastName),
                 new Claim(ClaimTypes.Email, customer.Email),
                 new Claim("role", "Customer")
             };

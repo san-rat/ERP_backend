@@ -15,15 +15,15 @@ $composeProjectPattern = "^[0-9a-f]+_{0}-" -f [regex]::Escape($composeProjectNam
 $composeFileArgs = @("-f", "docker-compose.yml", "-f", "docker-compose.local.yml")
 $composePrefix = @("compose", "-p", $composeProjectName) + $composeFileArgs
 $serviceDefinitions = @(
-    [pscustomobject]@{ Name = "apigateway";       DisplayName = "ApiGateway";        Aliases = @("apigateway", "api-gateway", "gateway");          SwaggerPath = $null;                    HealthPath = "/health" },
-    [pscustomobject]@{ Name = "authservice";      DisplayName = "AuthService";       Aliases = @("authservice", "auth-service", "auth");          SwaggerPath = "/auth/swagger";          HealthPath = "/auth/health" },
-    [pscustomobject]@{ Name = "customerservice";  DisplayName = "CustomerService";   Aliases = @("customerservice", "customer-service", "customer"); SwaggerPath = "/customer/swagger";   HealthPath = "/customer/health" },
-    [pscustomobject]@{ Name = "orderservice";     DisplayName = "OrderService";      Aliases = @("orderservice", "order-service", "order");       SwaggerPath = "/order/swagger";         HealthPath = "/order/health" },
-    [pscustomobject]@{ Name = "productservice";   DisplayName = "ProductService";    Aliases = @("productservice", "product-service", "product"); SwaggerPath = "/product/swagger";       HealthPath = "/product/health" },
-    [pscustomobject]@{ Name = "forecastservice";  DisplayName = "ForecastService";   Aliases = @("forecastservice", "forecast-service", "forecast"); SwaggerPath = "/forecast/swagger";   HealthPath = "/forecast/health" },
-    [pscustomobject]@{ Name = "predictionservice"; DisplayName = "PredictionService"; Aliases = @("predictionservice", "prediction-service", "prediction"); SwaggerPath = "/prediction/swagger"; HealthPath = "/prediction/health" },
-    [pscustomobject]@{ Name = "analyticsservice"; DisplayName = "AnalyticsService";  Aliases = @("analyticsservice", "analytics-service", "analytics"); SwaggerPath = "/analytics/swagger";  HealthPath = "/analytics/health" },
-    [pscustomobject]@{ Name = "adminservice";     DisplayName = "AdminService";      Aliases = @("adminservice", "admin-service", "admin");       SwaggerPath = "/admin/swagger";         HealthPath = "/admin/health" }
+    [pscustomobject]@{ Name = "apigateway";        DisplayName = "ApiGateway";         Aliases = @("apigateway", "api-gateway", "gateway");             SwaggerPath = $null;               HealthPath = "/health";             DirectBaseUrl = $null },
+    [pscustomobject]@{ Name = "authservice";       DisplayName = "AuthService";        Aliases = @("authservice", "auth-service", "auth");             SwaggerPath = "/auth/swagger";     HealthPath = "/auth/health";        DirectBaseUrl = $null },
+    [pscustomobject]@{ Name = "customerservice";   DisplayName = "CustomerService";    Aliases = @("customerservice", "customer-service", "customer"); SwaggerPath = "/swagger";          HealthPath = "/health";             DirectBaseUrl = "http://localhost:5002" },
+    [pscustomobject]@{ Name = "orderservice";      DisplayName = "OrderService";       Aliases = @("orderservice", "order-service", "order");         SwaggerPath = "/order/swagger";    HealthPath = "/order/health";       DirectBaseUrl = $null },
+    [pscustomobject]@{ Name = "productservice";    DisplayName = "ProductService";     Aliases = @("productservice", "product-service", "product");   SwaggerPath = "/product/swagger";  HealthPath = "/product/health";     DirectBaseUrl = $null },
+    [pscustomobject]@{ Name = "forecastservice";   DisplayName = "ForecastService";    Aliases = @("forecastservice", "forecast-service", "forecast"); SwaggerPath = "/forecast/swagger"; HealthPath = "/forecast/health";    DirectBaseUrl = $null },
+    [pscustomobject]@{ Name = "predictionservice"; DisplayName = "PredictionService";  Aliases = @("predictionservice", "prediction-service", "prediction"); SwaggerPath = "/prediction/swagger"; HealthPath = "/prediction/health"; DirectBaseUrl = $null },
+    [pscustomobject]@{ Name = "analyticsservice";  DisplayName = "AnalyticsService";   Aliases = @("analyticsservice", "analytics-service", "analytics"); SwaggerPath = "/analytics/swagger"; HealthPath = "/analytics/health";  DirectBaseUrl = $null },
+    [pscustomobject]@{ Name = "adminservice";      DisplayName = "AdminService";       Aliases = @("adminservice", "admin-service", "admin");         SwaggerPath = "/admin/swagger";    HealthPath = "/admin/health";       DirectBaseUrl = $null }
 )
 
 function Write-Step {
@@ -297,7 +297,12 @@ if ($selectedServices -contains "apigateway") {
 
     foreach ($service in $selectedServiceDefinitions) {
         if ($null -ne $service.SwaggerPath) {
-            Write-Host ("    {0,-20} http://localhost:5000{1}" -f $service.DisplayName, $service.SwaggerPath) -ForegroundColor White
+            if ($service.Name -eq "customerservice") {
+                Write-Host ("    {0,-20} {1}{2} (direct)" -f $service.DisplayName, $service.DirectBaseUrl, $service.SwaggerPath) -ForegroundColor White
+            }
+            else {
+                Write-Host ("    {0,-20} http://localhost:5000{1}" -f $service.DisplayName, $service.SwaggerPath) -ForegroundColor White
+            }
         }
     }
 
@@ -305,13 +310,27 @@ if ($selectedServices -contains "apigateway") {
     Write-Host "  Gateway health checks:" -ForegroundColor Yellow
     foreach ($service in $selectedServiceDefinitions) {
         if ($service.Name -ne "apigateway") {
-            Write-Host ("    {0,-20} http://localhost:5000{1}" -f $service.DisplayName, $service.HealthPath) -ForegroundColor White
+            if ($service.Name -eq "customerservice") {
+                Write-Host ("    {0,-20} {1}{2} (direct)" -f $service.DisplayName, $service.DirectBaseUrl, $service.HealthPath) -ForegroundColor White
+            }
+            else {
+                Write-Host ("    {0,-20} http://localhost:5000{1}" -f $service.DisplayName, $service.HealthPath) -ForegroundColor White
+            }
         }
     }
 }
 else {
     Write-Host "  ApiGateway was not selected." -ForegroundColor Yellow
-    Write-Host "  The started microservices are internal-only containers and are not reachable from the host without ApiGateway." -ForegroundColor DarkGray
+    if ($selectedServices -contains "customerservice") {
+        Write-Host "  CustomerService is exposed directly even without ApiGateway." -ForegroundColor Yellow
+        Write-Host "    Base URL   http://localhost:5002" -ForegroundColor White
+        Write-Host "    Health     http://localhost:5002/health" -ForegroundColor White
+        Write-Host "    Swagger    http://localhost:5002/swagger" -ForegroundColor White
+    }
+
+    if (@($servicesWithoutGateway | Where-Object { $_ -ne "customerservice" }).Count -gt 0) {
+        Write-Host "  The remaining started microservices are internal-only containers and are not reachable from the host without ApiGateway." -ForegroundColor DarkGray
+    }
 }
 
 Write-Host ""

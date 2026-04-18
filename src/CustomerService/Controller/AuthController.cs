@@ -1,17 +1,17 @@
 using CustomerService.Data;
 using CustomerService.DTOs.Auth;
+using CustomerService.Helpers;
 using CustomerService.Models;
 using CustomerService.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace CustomerService.Controller
 {
     [ApiController]
     [Route("api/commerce/auth")]
-    public class AuthController : ControllerBase
+    public class AuthController : CustomerControllerBase
     {
         private readonly CustomerDbContext _dbContext;
         private readonly IJwtService _jwtService;
@@ -25,14 +25,22 @@ namespace CustomerService.Controller
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
-            if (string.IsNullOrWhiteSpace(request.FullName) ||
-                string.IsNullOrWhiteSpace(request.Email) ||
+            if (string.IsNullOrWhiteSpace(request.Email) ||
                 string.IsNullOrWhiteSpace(request.Password))
             {
                 return BadRequest(new
                 {
                     success = false,
-                    message = "Full name, email, and password are required"
+                    message = "Email and password are required."
+                });
+            }
+
+            if (!CommerceMappings.TryResolveNameParts(request.FirstName, request.LastName, request.FullName, out var firstName, out var lastName))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "First name and last name are required."
                 });
             }
 
@@ -52,10 +60,14 @@ namespace CustomerService.Controller
 
             var customer = new Customer
             {
-                FullName = request.FullName.Trim(),
+                Id = Guid.NewGuid(),
+                FirstName = firstName,
+                LastName = lastName,
                 Email = normalizedEmail,
                 Phone = request.Phone?.Trim(),
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             _dbContext.Customers.Add(customer);
@@ -68,13 +80,7 @@ namespace CustomerService.Controller
                 Success = true,
                 Message = "Registration successful",
                 Token = token,
-                User = new
-                {
-                    customer.Id,
-                    customer.FullName,
-                    customer.Email,
-                    customer.Phone
-                }
+                User = customer.ToAccountResponse()
             });
         }
 
@@ -96,7 +102,7 @@ namespace CustomerService.Controller
             var customer = await _dbContext.Customers
                 .FirstOrDefaultAsync(c => c.Email == normalizedEmail);
 
-            if (customer == null || !BCrypt.Net.BCrypt.Verify(request.Password, customer.PasswordHash))
+            if (customer == null || string.IsNullOrWhiteSpace(customer.PasswordHash) || !BCrypt.Net.BCrypt.Verify(request.Password, customer.PasswordHash))
             {
                 return Unauthorized(new
                 {
@@ -112,13 +118,7 @@ namespace CustomerService.Controller
                 Success = true,
                 Message = "Login successful",
                 Token = token,
-                User = new
-                {
-                    customer.Id,
-                    customer.FullName,
-                    customer.Email,
-                    customer.Phone
-                }
+                User = customer.ToAccountResponse()
             });
         }
 
@@ -126,28 +126,10 @@ namespace CustomerService.Controller
         [HttpGet("profile")]
         public async Task<IActionResult> GetProfile()
         {
-            var customerIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (string.IsNullOrWhiteSpace(customerIdClaim) || !int.TryParse(customerIdClaim, out var customerId))
-            {
-                return Unauthorized(new
-                {
-                    success = false,
-                    message = "Invalid token"
-                });
-            }
+            var customerId = GetRequiredCustomerId();
 
             var customer = await _dbContext.Customers
-                .Where(c => c.Id == customerId)
-                .Select(c => new
-                {
-                    c.Id,
-                    c.FullName,
-                    c.Email,
-                    c.Phone,
-                    c.CreatedAt
-                })
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(c => c.Id == customerId);
 
             if (customer == null)
             {
@@ -161,8 +143,8 @@ namespace CustomerService.Controller
             return Ok(new
             {
                 success = true,
-                message = "Profile fetched successfully",
-                data = customer
+                message = "Profile fetched successfully.",
+                data = customer.ToAccountResponse()
             });
         }
     }

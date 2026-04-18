@@ -33,6 +33,7 @@ builder.Services.AddDbContext<OrderDbContext>(options =>
 // Dependency Injection
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderService.Services.OrderService>();
+builder.Services.AddHttpClient<IProductCatalogClient, ProductCatalogClient>();
 builder.Services.AddScoped<IKafkaProducer, KafkaProducer>();
 
 // JWT Authentication
@@ -151,7 +152,8 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
-    dbContext.Database.EnsureCreated();
+    dbContext.Database.OpenConnection();
+    dbContext.Database.CloseConnection();
 }
 
 app.Run();

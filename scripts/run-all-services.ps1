@@ -49,13 +49,13 @@ Write-Host ""
 Write-Host "  Gateway health checks (test routing):"    -ForegroundColor Yellow
 Write-Host "    http://localhost:5000/health"            -ForegroundColor White
 Write-Host "    http://localhost:5000/auth/health"       -ForegroundColor White
-Write-Host "    http://localhost:5000/customer/health"   -ForegroundColor White
 Write-Host "    http://localhost:5000/order/health"      -ForegroundColor White
 Write-Host "    http://localhost:5000/product/health"    -ForegroundColor White
 Write-Host "    http://localhost:5000/admin/health"      -ForegroundColor White
 Write-Host "    http://localhost:5000/forecast/health"   -ForegroundColor White
 Write-Host "    http://localhost:5000/prediction/health" -ForegroundColor White
 Write-Host "    http://localhost:5000/analytics/health"  -ForegroundColor White
+Write-Host "    http://localhost:5002/health  (CustomerService direct ingress)" -ForegroundColor White
 Write-Host ""
 Write-Host "  Close individual windows to stop each service."        -ForegroundColor DarkGray
 Write-Host "  Or run .\scripts\stop-all-services.ps1 to kill all." -ForegroundColor DarkGray

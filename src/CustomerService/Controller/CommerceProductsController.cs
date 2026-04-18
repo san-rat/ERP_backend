@@ -15,17 +15,42 @@ namespace CustomerService.Controller
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetProducts()
+        public async Task<IActionResult> GetProducts(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 12,
+            [FromQuery] string? category = null,
+            [FromQuery] int? categoryId = null,
+            [FromQuery] string? name = null)
         {
-            var result = await _productProxyService.GetProductsAsync();
-            return Content(result, "application/json");
+            if (pageNumber <= 0 || pageSize <= 0)
+            {
+                return BadRequest(new { success = false, message = "Invalid pagination parameters." });
+            }
+
+            var result = await _productProxyService.GetProductsAsync(pageNumber, pageSize, category, categoryId, name);
+            result.Data = result.Data.Where(product => product.IsActive).ToList();
+
+            return Ok(new
+            {
+                success = true,
+                data = result
+            });
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetProductById(string id)
+        [HttpGet("{id:guid}")]
+        public async Task<IActionResult> GetProductById(Guid id)
         {
             var result = await _productProxyService.GetProductByIdAsync(id);
-            return Content(result, "application/json");
+            if (result is null || !result.IsActive)
+            {
+                return NotFound(new { success = false, message = "Product not found." });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                data = result
+            });
         }
     }
 }

@@ -3,10 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace CustomerService.Controller
 {
     [ApiController]
-    [Route("api/health")]
     public class HealthController : ControllerBase
     {
-        [HttpGet]
+        [HttpGet("/health")]
+        [HttpGet("/api/health")]
         public IActionResult Get()
         {
             return Ok(new
