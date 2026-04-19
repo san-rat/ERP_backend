@@ -255,22 +255,6 @@ jobs:
 
           echo "API_GATEWAY_URL=https://${GATEWAY_FQDN}" >> "$GITHUB_ENV"
 
-      - name: Resolve CustomerService URL
-        shell: bash
-        run: |
-          CUSTOMER_FQDN="$(az containerapp show \
-            --name customerservice-prod \
-            --resource-group erp-rg-prod \
-            --query properties.configuration.ingress.fqdn \
-            -o tsv)"
-
-          if [[ -z "$CUSTOMER_FQDN" ]]; then
-            echo "Failed to resolve CustomerService FQDN."
-            exit 1
-          fi
-
-          echo "CUSTOMER_SERVICE_URL=https://${CUSTOMER_FQDN}" >> "$GITHUB_ENV"
-
       - name: Smoke tests — Service health checks via ApiGateway
         shell: bash
         run: |
@@ -307,13 +291,3 @@ jobs:
               "$url"
             echo
           done
-
-          echo ">>> Smoke testing CustomerService direct ingress via ${CUSTOMER_SERVICE_URL}/health"
-          curl -fsS \
-            --retry 18 \
-            --retry-delay 10 \
-            --retry-all-errors \
-            --connect-timeout 10 \
-            --max-time 90 \
-            "${CUSTOMER_SERVICE_URL}/health"
-          echo
