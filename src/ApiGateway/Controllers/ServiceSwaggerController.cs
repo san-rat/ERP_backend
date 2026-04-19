@@ -12,7 +12,6 @@ public class ServiceSwaggerController : ControllerBase
     private static readonly string[] SupportedServices =
     [
         "auth",
-        "customer",
         "order",
         "product",
         "forecast",
@@ -224,7 +223,6 @@ public class ServiceSwaggerController : ControllerBase
         definition = new SwaggerServiceDefinition(service.ToLowerInvariant(), service.ToLowerInvariant() switch
         {
             "auth" => "Authentication Service",
-            "customer" => "Customer Service",
             "order" => "Order Service",
             "product" => "Product Service",
             "forecast" => "Forecast Service",
@@ -358,8 +356,7 @@ public class ServiceSwaggerController : ControllerBase
     }
 
     private static bool RequiresAuth(string rewrittenPath) =>
-        rewrittenPath.StartsWith("/api/customers", StringComparison.OrdinalIgnoreCase)
-        || rewrittenPath.StartsWith("/api/orders", StringComparison.OrdinalIgnoreCase)
+        rewrittenPath.StartsWith("/api/orders", StringComparison.OrdinalIgnoreCase)
         || rewrittenPath.StartsWith("/api/products", StringComparison.OrdinalIgnoreCase)
         || rewrittenPath.StartsWith("/api/ml", StringComparison.OrdinalIgnoreCase)
         || rewrittenPath.StartsWith("/api/dashboard", StringComparison.OrdinalIgnoreCase)
@@ -368,7 +365,6 @@ public class ServiceSwaggerController : ControllerBase
     private static string? RewritePath(string service, string rawPath) => service switch
     {
         "auth" => RewriteAuthPath(rawPath),
-        "customer" => RewriteCustomerPath(rawPath),
         "order" => RewriteOrderPath(rawPath),
         "product" => RewriteProductPath(rawPath),
         "forecast" => RewriteForecastPath(rawPath),
@@ -391,16 +387,6 @@ public class ServiceSwaggerController : ControllerBase
         }
 
         return ReplacePrefix(rawPath, "/api/auth", "/api/auth");
-    }
-
-    private static string? RewriteCustomerPath(string rawPath)
-    {
-        if (string.Equals(rawPath, "/health", StringComparison.OrdinalIgnoreCase))
-        {
-            return "/customer/health";
-        }
-
-        return ReplacePrefix(rawPath, "/api/customers", "/api/customers");
     }
 
     private static string? RewriteOrderPath(string rawPath)

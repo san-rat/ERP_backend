@@ -228,7 +228,7 @@ All of these should return **200 OK**.
 ### Test 2 — JWT authentication is blocking protected routes
 
 ```bash
-curl http://localhost:5000/api/customers
+curl http://localhost:5000/api/orders
 ```
 
 Expected: **401 Unauthorized** — confirms the gateway is correctly requiring a JWT token before forwarding the request.
@@ -260,7 +260,7 @@ Expected: **404 Not Found** — confirms only your mapped routes are exposed.
 | Test | Endpoint | Expected | What it confirms |
 |---|---|---|---|
 | Health check | `GET /gateway/health` | 200 ✅ | Gateway is up |
-| Protected route, no token | `GET /api/customers` | 401 ✅ | JWT auth working |
+| Protected route, no token | `GET /api/orders` | 401 ✅ | JWT auth working |
 | Public route, service down | `POST /api/auth/login` | 502 ✅ | Routing is working |
 | Unknown route | `GET /api/nonexistent` | 404 ✅ | Only mapped routes exposed |
 
@@ -271,9 +271,8 @@ Expected: **404 Not Found** — confirms only your mapped routes are exposed.
 | Route | Downstream Service | Port | Auth Required |
 |---|---|---|---|
 | `/api/auth/*` | authentication-service | 5001 | ❌ Public |
-| `/api/customers/*` | core-erp-service | 5002 | ✅ JWT |
-| `/api/products/*` | core-erp-service | 5002 | ✅ JWT |
-| `/api/orders/*` | core-erp-service | 5002 | ✅ JWT |
+| `/api/products/*` | product-service | 5004 | ✅ JWT |
+| `/api/orders/*` | order-service | 5003 | ✅ JWT |
 | `/api/ml/churn/*` | ml-service | 5005 | ✅ JWT |
 | `/api/ml/segmentation/*` | ml-service | 5005 | ✅ JWT |
 | `/api/ml/forecast/*` | ml-service | 5005 | ✅ JWT |
@@ -327,7 +326,7 @@ The downstream service on that port is not running. Start the relevant service f
 
 You need a JWT token in your request header:
 ```bash
-curl http://localhost:5000/api/customers \
+curl http://localhost:5000/api/orders \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
 ```
 Get a token by hitting `/api/auth/login` on the authentication service directly (port 5001).

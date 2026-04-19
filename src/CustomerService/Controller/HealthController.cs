@@ -1,12 +1,19 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace CustomerService.Controllers;
-
-[ApiController]
-[Route("")]
-public class HealthController : ControllerBase
+namespace CustomerService.Controller
 {
-    [HttpGet("health")]
-    public IActionResult Health()
-        => Ok("CustomerService is running.");
+    [ApiController]
+    public class HealthController : ControllerBase
+    {
+        [HttpGet("/health")]
+        [HttpGet("/api/health")]
+        public IActionResult Get()
+        {
+            return Ok(new
+            {
+                success = true,
+                message = "Customer Commerce API is running"
+            });
+        }
+    }
 }

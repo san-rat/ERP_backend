@@ -165,16 +165,64 @@ jobs:
           JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
           PRODUCT_DB_CONN: ${{ secrets.PROD_SQL_CONNECTION_STRING_AZURE }}
         run: |
-          echo ">>> Setting JwtSettings__SecretKey and ConnectionStrings__DefaultConnection on productservice-prod..."
+          echo ">>> Setting JwtSettings__SecretKey, ConnectionStrings__DefaultConnection, and internal service auth on productservice-prod..."
           az containerapp secret set \
             --name productservice-prod \
             --resource-group erp-rg-prod \
-            --secrets "jwt-secret=$JWT_SECRET" "product-db-conn=$PRODUCT_DB_CONN"
+            --secrets "jwt-secret=$JWT_SECRET" "product-db-conn=$PRODUCT_DB_CONN" "internal-service-key=$JWT_SECRET"
 
           az containerapp update \
             --name productservice-prod \
             --resource-group erp-rg-prod \
-            --set-env-vars "JwtSettings__SecretKey=secretref:jwt-secret" "ConnectionStrings__DefaultConnection=secretref:product-db-conn"
+            --set-env-vars \
+              "JwtSettings__SecretKey=secretref:jwt-secret" \
+              "ConnectionStrings__DefaultConnection=secretref:product-db-conn" \
+              "InternalServiceAuth__HeaderName=X-Internal-Service-Key" \
+              "InternalServiceAuth__ServiceKey=secretref:internal-service-key"
+
+      - name: Configure OrderService JWT secret, DB connection, product endpoint, and internal auth
+        env:
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
+          ORDER_DB_CONN: ${{ secrets.PROD_SQL_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting OrderService secrets and env vars..."
+          az containerapp secret set \
+            --name orderservice-prod \
+            --resource-group erp-rg-prod \
+            --secrets "jwt-secret=$JWT_SECRET" "order-db-conn=$ORDER_DB_CONN" "internal-service-key=$JWT_SECRET"
+
+          az containerapp update \
+            --name orderservice-prod \
+            --resource-group erp-rg-prod \
+            --set-env-vars \
+              "JWT_SECRET=secretref:jwt-secret" \
+              "ConnectionStrings__DefaultConnection=secretref:order-db-conn" \
+              "Kafka__BootstrapServers=" \
+              "ServiceEndpoints__ProductService=http://productservice-prod" \
+              "InternalServiceAuth__HeaderName=X-Internal-Service-Key" \
+              "InternalServiceAuth__ServiceKey=secretref:internal-service-key"
+
+      - name: Configure CustomerService JWT secret, DB connection, internal service endpoints, and internal auth
+        env:
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
+          CUSTOMER_DB_CONN: ${{ secrets.PROD_SQL_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting CustomerService secrets and env vars..."
+          az containerapp secret set \
+            --name customerservice-prod \
+            --resource-group erp-rg-prod \
+            --secrets "jwt-secret=$JWT_SECRET" "customer-db-conn=$CUSTOMER_DB_CONN" "internal-service-key=$JWT_SECRET"
+
+          az containerapp update \
+            --name customerservice-prod \
+            --resource-group erp-rg-prod \
+            --set-env-vars \
+              "JwtSettings__SecretKey=secretref:jwt-secret" \
+              "ConnectionStrings__DefaultConnection=secretref:customer-db-conn" \
+              "ServiceEndpoints__ProductService=http://productservice-prod" \
+              "ServiceEndpoints__OrderService=http://orderservice-prod" \
+              "InternalServiceAuth__HeaderName=X-Internal-Service-Key" \
+              "InternalServiceAuth__ServiceKey=secretref:internal-service-key"
 
       - name: Configure PredictionService DB connection string
         env:
@@ -206,6 +254,22 @@ jobs:
           fi
 
           echo "API_GATEWAY_URL=https://${GATEWAY_FQDN}" >> "$GITHUB_ENV"
+
+      - name: Resolve CustomerService URL
+        shell: bash
+        run: |
+          CUSTOMER_FQDN="$(az containerapp show \
+            --name customerservice-prod \
+            --resource-group erp-rg-prod \
+            --query properties.configuration.ingress.fqdn \
+            -o tsv)"
+
+          if [[ -z "$CUSTOMER_FQDN" ]]; then
+            echo "Failed to resolve CustomerService FQDN."
+            exit 1
+          fi
+
+          echo "CUSTOMER_SERVICE_URL=https://${CUSTOMER_FQDN}" >> "$GITHUB_ENV"
 
       - name: Smoke tests — Service health checks via ApiGateway
         shell: bash
@@ -243,3 +307,13 @@ jobs:
               "$url"
             echo
           done
+
+          echo ">>> Smoke testing CustomerService direct ingress via ${CUSTOMER_SERVICE_URL}/health"
+          curl -fsS \
+            --retry 18 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            --connect-timeout 10 \
+            --max-time 90 \
+            "${CUSTOMER_SERVICE_URL}/health"
+          echo

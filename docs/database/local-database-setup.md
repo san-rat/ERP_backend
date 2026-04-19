@@ -90,7 +90,7 @@ Stop the Docker-local app containers and `sqlserver`:
 Gateway-backed Swagger entrypoints for the Docker-local workflow:
 
 - `http://localhost:5000/auth/swagger`
-- `http://localhost:5000/customer/swagger`
+- `http://localhost:5002/swagger` (`CustomerService` direct ingress)
 - `http://localhost:5000/order/swagger`
 - `http://localhost:5000/product/swagger`
 - `http://localhost:5000/forecast/swagger`

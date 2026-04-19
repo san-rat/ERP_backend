@@ -1,5 +1,6 @@
 x-jwt-secret: &jwt_secret "your-super-secret-key-change-in-production-at-least-32-chars!!"
 x-sqlserver-connection: &sqlserver_connection "Server=sqlserver,1433;Database=insighterp_db;User Id=sa;Password=LocalDev_Password123!;TrustServerCertificate=True;"
+x-internal-service-key: &internal_service_key "local-dev-internal-service-key"
 
 services:
   sqlserver:
@@ -46,8 +47,19 @@ services:
       context: ./src/CustomerService
       dockerfile: Dockerfile
     restart: unless-stopped
+    depends_on:
+      sqlserver:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: *sqlserver_connection
+      JwtSettings__SecretKey: *jwt_secret
+      ServiceEndpoints__ProductService: "http://productservice:8080"
+      ServiceEndpoints__OrderService: "http://orderservice:8080"
+      InternalServiceAuth__HeaderName: "X-Internal-Service-Key"
+      InternalServiceAuth__ServiceKey: *internal_service_key
+    ports:
+      - "5002:8080"
 
   orderservice:
     build:
@@ -62,6 +74,9 @@ services:
       ConnectionStrings__DefaultConnection: *sqlserver_connection
       JWT_SECRET: *jwt_secret
       Kafka__BootstrapServers: ""
+      ServiceEndpoints__ProductService: "http://productservice:8080"
+      InternalServiceAuth__HeaderName: "X-Internal-Service-Key"
+      InternalServiceAuth__ServiceKey: *internal_service_key
 
   productservice:
     build:
@@ -75,6 +90,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: *sqlserver_connection
       JWT_SECRET: *jwt_secret
+      InternalServiceAuth__HeaderName: "X-Internal-Service-Key"
+      InternalServiceAuth__ServiceKey: *internal_service_key
 
   forecastservice:
     build:
