@@ -96,6 +96,20 @@ namespace CustomerService.Services
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync();
+                if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                {
+                    var integrationError = JsonSerializer.Serialize(new
+                    {
+                        success = false,
+                        message = "Product catalog is temporarily unavailable. Please try again."
+                    });
+
+                    throw new HttpResponseException(
+                        (int)HttpStatusCode.BadGateway,
+                        "Product service integration failed.",
+                        integrationError);
+                }
+
                 throw new HttpResponseException((int)response.StatusCode, "Product service request failed.", body);
             }
 

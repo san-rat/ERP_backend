@@ -77,6 +77,20 @@ namespace CustomerService.Services
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync();
+                if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                {
+                    var integrationError = JsonSerializer.Serialize(new
+                    {
+                        success = false,
+                        message = "Order processing is temporarily unavailable. Please try again."
+                    });
+
+                    throw new HttpResponseException(
+                        (int)HttpStatusCode.BadGateway,
+                        "Order service integration failed.",
+                        integrationError);
+                }
+
                 throw new HttpResponseException((int)response.StatusCode, "Order service request failed.", body);
             }
 
