@@ -201,16 +201,17 @@ docker compose down
 
 ---
 
-### Local Development — Docker-local via Gateway
+### Local Development — Docker-local
 
-Only `ApiGateway` is exposed on the host in the Docker-local workflow.
+`ApiGateway` remains exposed on `http://localhost:5000`, and `CustomerService` is exposed directly on `http://localhost:5002` for ecommerce traffic.
 
 | Service Surface | URL |
 |---|---|
 | API Gateway | http://localhost:5000 |
 | Gateway health | http://localhost:5000/health |
 | AuthService Swagger | http://localhost:5000/auth/swagger |
-| CustomerService Swagger | http://localhost:5000/customer/swagger |
+| CustomerService Swagger | http://localhost:5002/swagger |
+| CustomerService Health | http://localhost:5002/health |
 | OrderService Swagger | http://localhost:5000/order/swagger |
 | ProductService Swagger | http://localhost:5000/product/swagger |
 | ForecastService Swagger | http://localhost:5000/forecast/swagger |
@@ -225,25 +226,25 @@ Only `ApiGateway` is exposed on the host in the Docker-local workflow.
 ### Local
 ```
 http://localhost:5000/auth/health
-http://localhost:5000/customer/health
 http://localhost:5000/order/health
 http://localhost:5000/product/health
 http://localhost:5000/admin/health
 http://localhost:5000/forecast/health
 http://localhost:5000/prediction/health
 http://localhost:5000/analytics/health
+http://localhost:5002/health
 ```
 
 ### Azure (dev)
 ```
 https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/auth/health
-https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/customer/health
 https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/order/health
 https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/product/health
 https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/admin/health
 https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/forecast/health
 https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/prediction/health
 https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/analytics/health
+https://customerservice-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/health
 ```
 
 ---

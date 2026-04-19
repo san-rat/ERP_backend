@@ -33,7 +33,7 @@ public class OcelotRouteContractTests
     {
         using var document = Load(relativePath);
 
-        foreach (var service in new[] { "auth", "customer", "order", "product", "forecast", "prediction", "analytics", "admin" })
+        foreach (var service in new[] { "auth", "order", "product", "forecast", "prediction", "analytics", "admin" })
         {
             AssertRoute(document, $"/{service}/swagger/{{everything}}", "/swagger/{everything}");
         }

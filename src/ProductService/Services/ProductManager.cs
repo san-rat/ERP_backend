@@ -26,36 +26,13 @@ namespace ProductService.Services
         public async Task<PaginatedResponse<ProductResponseDto>> GetProductsAsync(
             int pageNumber, int pageSize, string? categoryName, int? categoryId, string? name)
         {
-            var query = _context.Products
-                .Include(p => p.Category)
-                .Include(p => p.Inventory)
-                .AsQueryable();
+            return await GetProductsInternalAsync(pageNumber, pageSize, categoryName, categoryId, name, activeOnly: false);
+        }
 
-            if (!string.IsNullOrWhiteSpace(categoryName))
-                query = query.Where(p => p.Category != null && p.Category.Name.ToLower() == categoryName.ToLower());
-
-            if (categoryId.HasValue)
-                query = query.Where(p => p.CategoryId == categoryId.Value);
-
-            if (!string.IsNullOrWhiteSpace(name))
-                query = query.Where(p => p.Name.ToLower().Contains(name.ToLower()));
-
-            var totalRecords = await query.CountAsync();
-
-            var products = await query
-                .OrderBy(p => p.Name)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .Select(p => MapToProductResponse(p))
-                .ToListAsync();
-
-            return new PaginatedResponse<ProductResponseDto>
-            {
-                Data = products,
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                TotalRecords = totalRecords
-            };
+        public async Task<PaginatedResponse<ProductResponseDto>> GetCatalogProductsAsync(
+            int pageNumber, int pageSize, string? categoryName, int? categoryId, string? name)
+        {
+            return await GetProductsInternalAsync(pageNumber, pageSize, categoryName, categoryId, name, activeOnly: true);
         }
 
         public async Task<ProductResponseDto?> GetProductByIdAsync(Guid id)
@@ -66,6 +43,26 @@ namespace ProductService.Services
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             return p == null ? null : MapToProductResponse(p);
+        }
+
+        public async Task<IReadOnlyList<ProductResponseDto>> ResolveProductsAsync(IEnumerable<Guid> productIds)
+        {
+            var ids = productIds.Distinct().ToArray();
+            if (ids.Length == 0)
+            {
+                return Array.Empty<ProductResponseDto>();
+            }
+
+            var products = await _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.Inventory)
+                .Where(p => ids.Contains(p.Id))
+                .ToListAsync();
+
+            return products
+                .Select(MapToProductResponse)
+                .OrderBy(product => product.Name)
+                .ToList();
         }
 
         // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
@@ -248,6 +245,41 @@ namespace ProductService.Services
             return (true, $"Stock deducted successfully. Remaining: {inventory.QuantityAvailable}.");
         }
 
+        public async Task<(bool Success, string Message)> ReleaseStockAsync(ReleaseStockDto dto)
+        {
+            var inventory = await _context.Inventory
+                .FirstOrDefaultAsync(i => i.ProductId == dto.ProductId);
+
+            if (inventory == null)
+            {
+                return (false, $"No inventory record found for product {dto.ProductId}.");
+            }
+
+            inventory.QuantityAvailable += dto.Quantity;
+            inventory.UpdatedAt = DateTime.UtcNow;
+
+            var product = await _context.Products.FindAsync(dto.ProductId);
+            if (product != null)
+            {
+                product.QuantityAvailable = inventory.QuantityAvailable;
+                product.UpdatedAt = DateTime.UtcNow;
+            }
+
+            _context.InventoryReservations.Add(new InventoryReservation
+            {
+                ProductId = dto.ProductId,
+                OrderId = dto.OrderId,
+                Quantity = dto.Quantity,
+                Status = "RELEASED",
+                ReservedAt = DateTime.UtcNow
+            });
+
+            await AutoResolveAlertIfRestockedAsync(dto.ProductId);
+            await _context.SaveChangesAsync();
+
+            return (true, $"Stock released successfully. Available: {inventory.QuantityAvailable}.");
+        }
+
         // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         //  PRIVATE HELPERS
         // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
@@ -265,6 +297,55 @@ namespace ProductService.Services
                     QuantityAtAlert = currentQty
                 });
             }
+        }
+
+        private async Task<PaginatedResponse<ProductResponseDto>> GetProductsInternalAsync(
+            int pageNumber,
+            int pageSize,
+            string? categoryName,
+            int? categoryId,
+            string? name,
+            bool activeOnly)
+        {
+            var query = _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.Inventory)
+                .AsQueryable();
+
+            if (activeOnly)
+            {
+                query = query.Where(p => p.IsActive);
+            }
+
+            if (!string.IsNullOrWhiteSpace(categoryName))
+            {
+                query = query.Where(p => p.Category != null && p.Category.Name.ToLower() == categoryName.ToLower());
+            }
+
+            if (categoryId.HasValue)
+            {
+                query = query.Where(p => p.CategoryId == categoryId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                query = query.Where(p => p.Name.ToLower().Contains(name.ToLower()));
+            }
+
+            var totalRecords = await query.CountAsync();
+            var products = await query
+                .OrderBy(p => p.Name)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PaginatedResponse<ProductResponseDto>
+            {
+                Data = products.Select(MapToProductResponse).ToList(),
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalRecords = totalRecords
+            };
         }
 
         /// <summary>

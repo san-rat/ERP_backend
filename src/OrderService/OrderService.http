@@ -1,73 +1,64 @@
-@OrderService_HostAddress = https://localhost:5001
+@OrderService_HostAddress = http://localhost:5003
+@erpToken = YOUR_ERP_JWT_TOKEN_HERE
+@internalServiceKey = local-dev-internal-service-key
 
 ### Health
-GET {{OrderService_HostAddress}}/api/health
+GET {{OrderService_HostAddress}}/health
 
 ### Get all orders
 GET {{OrderService_HostAddress}}/api/orders
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Authorization: Bearer {{erpToken}}
 
 ### Get order by id
-GET {{OrderService_HostAddress}}/api/orders/1
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
+GET {{OrderService_HostAddress}}/api/orders/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{erpToken}}
 
 ### Create order
 POST {{OrderService_HostAddress}}/api/orders
 Content-Type: application/json
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Authorization: Bearer {{erpToken}}
 
 {
   "externalOrderId": "ECOM-1001",
-  "customerId": "CUS-5001",
+  "customerId": "00000000-0000-0000-0000-000000000000",
   "totalAmount": 2500.00
 }
 
-### Confirm order
-PUT {{OrderService_HostAddress}}/api/orders/1/status
+### Update order status
+PUT {{OrderService_HostAddress}}/api/orders/00000000-0000-0000-0000-000000000000/status
 Content-Type: application/json
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Authorization: Bearer {{erpToken}}
 
 {
-  "newStatus": "Confirmed"
-}
-
-### Process order
-PUT {{OrderService_HostAddress}}/api/orders/1/status
-Content-Type: application/json
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
-
-{
-  "newStatus": "Processing"
-}
-
-### Ship order
-PUT {{OrderService_HostAddress}}/api/orders/1/status
-Content-Type: application/json
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
-
-{
-  "newStatus": "Shipped"
-}
-
-### Deliver order
-PUT {{OrderService_HostAddress}}/api/orders/1/status
-Content-Type: application/json
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
-
-{
-  "newStatus": "Delivered"
-}
-
-### Cancel order
-PUT {{OrderService_HostAddress}}/api/orders/1/status
-Content-Type: application/json
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
-
-{
-  "newStatus": "Cancelled",
+  "requestedStatus": "Cancelled",
   "cancellationReason": "Customer requested cancellation"
 }
 
 ### Manager report
 GET {{OrderService_HostAddress}}/api/orders/reports/summary
-Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Authorization: Bearer {{erpToken}}
+
+### Internal ecommerce order creation
+POST {{OrderService_HostAddress}}/api/internal/orders/ecommerce
+Content-Type: application/json
+X-Internal-Service-Key: {{internalServiceKey}}
+
+{
+  "customerId": "00000000-0000-0000-0000-000000000000",
+  "externalOrderId": "ECOM-20260418-001",
+  "paymentMethod": "CARD",
+  "shippingAddressSnapshot": {
+    "fullName": "Jamie Customer",
+    "phone": "+94-77-555-0101",
+    "addressLine1": "15 Galle Road",
+    "city": "Colombo",
+    "postalCode": "00300",
+    "country": "Sri Lanka"
+  },
+  "items": [
+    {
+      "productId": "00000000-0000-0000-0000-000000000000",
+      "quantity": 2
+    }
+  ]
+}

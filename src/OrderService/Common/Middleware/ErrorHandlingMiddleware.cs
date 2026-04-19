@@ -34,6 +34,7 @@ namespace OrderService.Common.Middleware
             {
                 NotFoundException => (int)HttpStatusCode.NotFound,
                 BadRequestException => (int)HttpStatusCode.BadRequest,
+                ConflictException => (int)HttpStatusCode.Conflict,
                 UnauthorizedAppException => (int)HttpStatusCode.Unauthorized,
                 _ => (int)HttpStatusCode.InternalServerError
             };

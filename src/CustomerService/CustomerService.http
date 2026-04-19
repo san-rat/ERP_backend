@@ -1,19 +1,87 @@
 @CustomerService_HostAddress = http://localhost:5002
-@gateway = http://localhost:5000
+@customerToken = YOUR_CUSTOMER_JWT_HERE
 
 ###
-# Direct — health check (no token)
+# Direct — health check
 GET {{CustomerService_HostAddress}}/health
 Accept: application/json
 
 ###
-# Via Gateway — customer health (no token)
-GET {{gateway}}/customer/health
+# Register a new customer account
+POST {{CustomerService_HostAddress}}/api/commerce/auth/register
+Content-Type: application/json
+
+{
+  "firstName": "Jamie",
+  "lastName": "Customer",
+  "email": "jamie.customer@example.com",
+  "password": "Password123!",
+  "phone": "+94-77-555-0101"
+}
+
+###
+# Login
+POST {{CustomerService_HostAddress}}/api/commerce/auth/login
+Content-Type: application/json
+
+{
+  "email": "jamie.customer@example.com",
+  "password": "Password123!"
+}
+
+###
+# Browse products (public storefront)
+GET {{CustomerService_HostAddress}}/api/commerce/products?pageNumber=1&pageSize=12
 Accept: application/json
 
 ###
-# Via Gateway — customer endpoints (requires Bearer token)
-GET {{gateway}}/api/customers/
+# Get customer account
+GET {{CustomerService_HostAddress}}/api/commerce/account
+Authorization: Bearer {{customerToken}}
+
+###
+# Add an address
+POST {{CustomerService_HostAddress}}/api/commerce/addresses
+Content-Type: application/json
+Authorization: Bearer {{customerToken}}
+
+{
+  "fullName": "Jamie Customer",
+  "phone": "+94-77-555-0101",
+  "addressLine1": "15 Galle Road",
+  "city": "Colombo",
+  "postalCode": "00300",
+  "country": "Sri Lanka",
+  "isDefault": true
+}
+
+###
+# Add a product to cart
+POST {{CustomerService_HostAddress}}/api/commerce/cart/items
+Content-Type: application/json
+Authorization: Bearer {{customerToken}}
+
+{
+  "productId": "00000000-0000-0000-0000-000000000000",
+  "quantity": 2
+}
+
+###
+# Checkout using the default cart
+POST {{CustomerService_HostAddress}}/api/commerce/checkout
+Content-Type: application/json
+Authorization: Bearer {{customerToken}}
+
+{
+  "addressId": "00000000-0000-0000-0000-000000000000",
+  "paymentMethod": "CARD",
+  "notes": "Please leave at the front desk."
+}
+
+###
+# List customer orders
+GET {{CustomerService_HostAddress}}/api/commerce/orders
+Authorization: Bearer {{customerToken}}
 Accept: application/json
 
 ###

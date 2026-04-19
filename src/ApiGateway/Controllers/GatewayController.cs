@@ -134,7 +134,6 @@ namespace ApiGateway.Controllers
         {
             authentication = "/api/auth/*",
             auth_db_check = "/auth/db-check",
-            customers = "/api/customers/*",
             orders = "/api/orders/*",
             products = "/api/products/*",
             admin = "/api/admin/*",
@@ -148,7 +147,6 @@ namespace ApiGateway.Controllers
             chatbot = "/api/chatbot/*",
             notifications = "/api/notifications/*",
             auth_swagger = "/auth/swagger",
-            customer_swagger = "/customer/swagger",
             order_swagger = "/order/swagger",
             product_swagger = "/product/swagger",
             forecast_swagger = "/forecast/swagger",
@@ -161,7 +159,6 @@ namespace ApiGateway.Controllers
         {
             authentication = "/api/auth/*",
             auth_db_check = "/auth/db-check",
-            customers = "/api/customers/*",
             orders = "/api/orders/*",
             products = "/api/products/*",
             admin = "/api/admin/*",
@@ -172,7 +169,6 @@ namespace ApiGateway.Controllers
             ml_model_management = "/api/ml/model-management/*",
             dashboard = "/api/dashboard/*",
             auth_swagger = "/auth/swagger",
-            customer_swagger = "/customer/swagger",
             order_swagger = "/order/swagger",
             product_swagger = "/product/swagger",
             forecast_swagger = "/forecast/swagger",
@@ -184,34 +180,31 @@ namespace ApiGateway.Controllers
         private static object[] GetDefaultServices() => new object[]
         {
             new { microservice = 1, name = "AuthService", host = "AuthService", port = 5001, description = "Account Management — registration, login, JWT, RBAC, MFA, API keys" },
-            new { microservice = 2, name = "CustomerService", host = "CustomerService", port = 5002, description = "Customers — CRUD, search, segments, attributes" },
-            new { microservice = 3, name = "OrderService", host = "OrderService", port = 5003, description = "Orders — create, status, cancellation, returns & refunds" },
-            new { microservice = 4, name = "ProductService", host = "ProductService", port = 5004, description = "Products — CRUD, inventory reserve/release, low-stock alerts" },
-            new { microservice = 5, name = "ForecastService", host = "ForecastService", port = 5005, description = "Forecast Service — demand & revenue forecasting" },
-            new { microservice = 6, name = "PredictionService", host = "PredictionService", port = 5006, description = "Prediction Service — churn prediction & customer segmentation" },
-            new { microservice = 7, name = "AnalyticsService", host = "AnalyticsService", port = 5007, description = "Analytics Service — dashboards & KPI metrics" },
-            new { microservice = 8, name = "AdminService", host = "AdminService", port = 5011, description = "Admin Service — staff management, password resets, dashboard overview" },
-            new { microservice = 9, name = "report-service", host = "report-service", port = 5008, description = "Report Service — PDF/Excel report generation" },
-            new { microservice = 10, name = "chatbot-service", host = "chatbot-service", port = 5009, description = "Chatbot Service — AI assistant" },
-            new { microservice = 11, name = "notification-service", host = "notification-service", port = 5010, description = "Notification Service — push, email, SMS" }
+            new { microservice = 2, name = "OrderService", host = "OrderService", port = 5003, description = "Orders — create, status, cancellation, returns & refunds" },
+            new { microservice = 3, name = "ProductService", host = "ProductService", port = 5004, description = "Products — CRUD, inventory reserve/release, low-stock alerts" },
+            new { microservice = 4, name = "ForecastService", host = "ForecastService", port = 5005, description = "Forecast Service — demand & revenue forecasting" },
+            new { microservice = 5, name = "PredictionService", host = "PredictionService", port = 5006, description = "Prediction Service — churn prediction & customer segmentation" },
+            new { microservice = 6, name = "AnalyticsService", host = "AnalyticsService", port = 5007, description = "Analytics Service — dashboards & KPI metrics" },
+            new { microservice = 7, name = "AdminService", host = "AdminService", port = 5011, description = "Admin Service — staff management, password resets, dashboard overview" },
+            new { microservice = 8, name = "report-service", host = "report-service", port = 5008, description = "Report Service — PDF/Excel report generation" },
+            new { microservice = 9, name = "chatbot-service", host = "chatbot-service", port = 5009, description = "Chatbot Service — AI assistant" },
+            new { microservice = 10, name = "notification-service", host = "notification-service", port = 5010, description = "Notification Service — push, email, SMS" }
         };
 
         private static object[] GetDockerServices() => new object[]
         {
             new { microservice = 1, name = "AuthService", host = "authservice", port = 8080, description = "Account management API with proxied health and Swagger." },
-            new { microservice = 2, name = "CustomerService", host = "customerservice", port = 8080, description = "Currently exposes health and Swagger only." },
-            new { microservice = 3, name = "OrderService", host = "orderservice", port = 8080, description = "Orders API with proxied health and Swagger." },
-            new { microservice = 4, name = "ProductService", host = "productservice", port = 8080, description = "Products API with proxied health and Swagger." },
-            new { microservice = 5, name = "ForecastService", host = "forecastservice", port = 8080, description = "Forecast, analytics, and retraining APIs with proxied health and Swagger." },
-            new { microservice = 6, name = "PredictionService", host = "predictionservice", port = 8080, description = "Churn and model-management APIs with proxied health and Swagger." },
-            new { microservice = 7, name = "AnalyticsService", host = "analyticsservice", port = 8080, description = "Currently exposes health and Swagger only." },
-            new { microservice = 8, name = "AdminService", host = "adminservice", port = 8080, description = "Admin API with proxied health and Swagger." }
+            new { microservice = 2, name = "OrderService", host = "orderservice", port = 8080, description = "Orders API with proxied health and Swagger." },
+            new { microservice = 3, name = "ProductService", host = "productservice", port = 8080, description = "Products API with proxied health and Swagger." },
+            new { microservice = 4, name = "ForecastService", host = "forecastservice", port = 8080, description = "Forecast, analytics, and retraining APIs with proxied health and Swagger." },
+            new { microservice = 5, name = "PredictionService", host = "predictionservice", port = 8080, description = "Churn and model-management APIs with proxied health and Swagger." },
+            new { microservice = 6, name = "AnalyticsService", host = "analyticsservice", port = 8080, description = "Currently exposes health and Swagger only." },
+            new { microservice = 7, name = "AdminService", host = "adminservice", port = 8080, description = "Admin API with proxied health and Swagger." }
         };
 
         private static object[] GetDefaultRoutes() => new object[]
         {
             new { upstream = "/api/auth/*", downstream = "AuthService:5001", auth = false },
-            new { upstream = "/api/customers/*", downstream = "CustomerService:5002", auth = true },
             new { upstream = "/api/orders/*", downstream = "OrderService:5003", auth = true },
             new { upstream = "/api/products/*", downstream = "ProductService:5004", auth = true },
             new { upstream = "/api/admin/*", downstream = "AdminService:5011", auth = true },
@@ -227,8 +220,6 @@ namespace ApiGateway.Controllers
             new { upstream = "/auth/health", downstream = "AuthService:5001", auth = false },
             new { upstream = "/auth/db-check", downstream = "AuthService:5001", auth = false },
             new { upstream = "/auth/swagger/*", downstream = "AuthService:5001/swagger/*", auth = false },
-            new { upstream = "/customer/health", downstream = "CustomerService:5002", auth = false },
-            new { upstream = "/customer/swagger/*", downstream = "CustomerService:5002/swagger/*", auth = false },
             new { upstream = "/order/health", downstream = "OrderService:5003", auth = false },
             new { upstream = "/order/swagger/*", downstream = "OrderService:5003/swagger/*", auth = false },
             new { upstream = "/product/health", downstream = "ProductService:5004", auth = false },
@@ -254,10 +245,6 @@ namespace ApiGateway.Controllers
             new { upstream = "/auth/db-check", downstream = "authservice:8080/db-check", auth = false },
             new { upstream = "/auth/swagger", downstream = "gateway redirect -> /auth/swagger/index.html", auth = false },
             new { upstream = "/auth/swagger/*", downstream = "authservice:8080/swagger/*", auth = false },
-            new { upstream = "/api/customers/*", downstream = "customerservice:8080/api/customers/*", auth = true },
-            new { upstream = "/customer/health", downstream = "customerservice:8080/health", auth = false },
-            new { upstream = "/customer/swagger", downstream = "gateway redirect -> /customer/swagger/index.html", auth = false },
-            new { upstream = "/customer/swagger/*", downstream = "customerservice:8080/swagger/*", auth = false },
             new { upstream = "/api/orders/*", downstream = "orderservice:8080/api/orders/*", auth = true },
             new { upstream = "/order/health", downstream = "orderservice:8080/health", auth = false },
             new { upstream = "/order/swagger", downstream = "gateway redirect -> /order/swagger/index.html", auth = false },

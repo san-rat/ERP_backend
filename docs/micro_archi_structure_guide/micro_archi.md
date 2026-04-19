@@ -120,9 +120,9 @@ This document outlines all microservices in the InsightERP backend system, their
 | **Local Port (HTTP)** | `5002` |
 | **Container Port** | `8080` |
 | **Azure App Name** | `customerservice-dev` |
-| **Azure Ingress** | Internal only |
+| **Azure Ingress** | External |
 | **Health Endpoint** | `GET /health` |
-| **Responsibility** | Manages customer data — creation, retrieval, updates, and deletion |
+| **Responsibility** | External ecommerce backend — customer auth, addresses, cart, storefront catalog, checkout, and customer-safe order lifecycle |
 
 ---
 
@@ -197,7 +197,7 @@ This document outlines all microservices in the InsightERP backend system, their
 |---|---|---|---|---|
 | ApiGateway | `5000` | `8080` | `apigateway-dev` | External |
 | AuthService | `5001` | `8080` | `authservice-dev` | External |
-| CustomerService | `5002` | `8080` | `customerservice-dev` | Internal |
+| CustomerService | `5002` | `8080` | `customerservice-dev` | External |
 | OrderService | `5003` | `8080` | `orderservice-dev` | Internal |
 | ProductService | `5004` | `8080` | `productservice-dev` | Internal |
 | ForecastService | `5005` | `8080` | `forecastservice-dev` | Internal |
