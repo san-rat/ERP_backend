@@ -26,11 +26,12 @@ A .NET microservices backend for the InsightERP platform, using an Ocelot API Ga
 ```
 Frontend (Vite :5173 locally / Vercel in cloud)
         │
-        ▼
-API Gateway (:5000)   ← single entry point for all requests
+        ├──────────────────────────────────────────┐
+        ▼                                          ▼
+API Gateway (:5000)                    CustomerService (:5002)
+(ERP staff & internal traffic)         (ecommerce / customer-facing)
         │
         ├── AuthService        (:5001)
-        ├── CustomerService    (:5002)
         ├── OrderService       (:5003)
         ├── ProductService     (:5004)
         ├── ForecastService    (:5005)
@@ -39,9 +40,108 @@ API Gateway (:5000)   ← single entry point for all requests
         └── AdminService       (:5011)
                 │
                 ▼
-         Azure SQL DB      ← insighterp_db on insighterp-sqlserver.database.windows.net
-                           (single database, isolated per service by SQL schema)
+         Azure SQL DB      
 ```
+
+> **CustomerService** runs independently from the API Gateway for ecommerce traffic. It has its own JWT auth stack, CORS policy, and direct database connection, and is exposed publicly on both local `:5002` and Azure.
+
+---
+
+## Services
+
+| Service | Port | Responsibility |
+|---|---|---|
+| **ApiGateway** | 5000 | Single entry point — routes, JWT validation, Swagger aggregation |
+| **AuthService** | 5001 | ERP staff login/register, JWT issuance |
+| **CustomerService** | 5002 | Ecommerce customer auth, cart, products, orders, addresses, account |
+| **OrderService** | 5003 | Internal ERP order lifecycle management |
+| **ProductService** | 5004 | Internal ERP product catalog |
+| **ForecastService** | 5005 | Demand forecasting |
+| **PredictionService** | 5006 | ML-based predictions |
+| **AnalyticsService** | 5007 | Business analytics and dashboard metrics |
+| **AdminService** | 5011 | Staff/user management, admin dashboard overview |
+
+---
+
+## CustomerService — Ecommerce API
+
+CustomerService is the customer-facing commerce service. It runs independently (not behind the API Gateway) and exposes the following endpoints:
+
+| Controller | Endpoint | Description |
+|---|---|---|
+| Auth | `POST /api/commerce/auth/register` | Register a new customer account |
+| Auth | `POST /api/commerce/auth/login` | Customer login, returns JWT |
+| Auth | `GET /api/commerce/auth/profile` | Get current customer's profile |
+| Account | `GET /api/commerce/account` | Get account details |
+| Account | `PUT /api/commerce/account` | Update account details |
+| Account | `DELETE /api/commerce/account` | Delete customer account |
+| Addresses | `GET /api/commerce/addresses` | List saved addresses |
+| Addresses | `POST /api/commerce/addresses` | Add a new address |
+| Addresses | `PUT /api/commerce/addresses/{id}` | Update an address |
+| Addresses | `DELETE /api/commerce/addresses/{id}` | Delete an address |
+| Products | `GET /api/commerce/products` | Browse product catalog |
+| Products | `GET /api/commerce/products/{id}` | Get product details |
+| Cart | `GET /api/commerce/cart` | View cart |
+| Cart | `POST /api/commerce/cart/items` | Add item to cart |
+| Cart | `PUT /api/commerce/cart/items/{itemId}` | Update cart item quantity |
+| Cart | `DELETE /api/commerce/cart/items/{itemId}` | Remove cart item |
+| Cart | `DELETE /api/commerce/cart` | Clear entire cart |
+| Orders | `POST /api/commerce/checkout` | Checkout and place order |
+| Orders | `GET /api/commerce/orders` | List customer's orders |
+| Orders | `GET /api/commerce/orders/{id}` | Get order details |
+| Orders | `POST /api/commerce/orders/{id}/cancel` | Cancel an order |
+| Health | `GET /health` | Service health check |
+
+---
+
+## Frontend
+
+The frontend is a **React + Vite** single-page application stored in a separate repository (`ERP_frontend`).
+
+### Running Locally
+
+```powershell
+# From the ERP_frontend folder
+npm install
+npm run dev
+# Runs on http://localhost:5173
+```
+
+### Configuration
+
+The frontend uses a single environment variable for all API calls:
+
+```env
+VITE_API_BASE_URL=http://localhost:5000      # local ERP/internal traffic
+VITE_CUSTOMER_API_URL=http://localhost:5002  # local ecommerce traffic
+```
+
+In production (Vercel), these are set to the Azure Container Apps public URLs.
+
+### Auth Flow — ERP Staff
+
+```
+Frontend → POST /api/auth/login (ApiGateway :5000)
+        ← JWT returned
+        → JWT stored in sessionStorage
+        → Subsequent requests include Authorization: Bearer <token>
+```
+
+### Auth Flow — Ecommerce Customers
+
+```
+Frontend → POST /api/commerce/auth/login (CustomerService :5002)
+        ← JWT returned (separate issuer/audience from ERP JWT)
+        → JWT stored in sessionStorage
+        → Subsequent requests to /api/commerce/* include Bearer token
+```
+
+### Deployment (Vercel)
+
+- The frontend repo is connected to Vercel for automatic deployment on push.
+- `VITE_API_BASE_URL` is set to the ApiGateway public Azure URL.
+- `VITE_CUSTOMER_API_URL` is set to the CustomerService public Azure URL.
+- No hardcoded URLs — all API calls use `import.meta.env.VITE_*`.
 
 ---
 
@@ -51,12 +151,14 @@ API Gateway (:5000)   ← single entry point for all requests
 |---|---|
 | **API Gateway** | https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io |
 | **AuthService** | https://authservice-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io |
-| **Admin API (via Gateway)** | https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/api/admin/* |
+| **CustomerService** | https://customerservice-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io |
 | **Gateway Swagger** | https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/swagger |
 | **Auth Swagger** | https://authservice-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/swagger |
+| **Customer Swagger** | https://customerservice-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/swagger |
 | **Gateway Health** | https://apigateway-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/auth/health |
+| **Customer Health** | https://customerservice-dev.victoriouscliff-19d215bb.southeastasia.azurecontainerapps.io/health |
 
-> All other services (Customer, Order, Product, Forecast, Prediction, Analytics, Admin) are **internal only** — accessible only through the API Gateway, not directly from the internet.
+> All other services (Order, Product, Forecast, Prediction, Analytics, Admin) are **internal only** — accessible only through the API Gateway, not directly from the internet.
 
 ---
 
@@ -91,6 +193,13 @@ Use this for the fastest per-service debugging loop from PowerShell or your IDE.
 docker compose up -d
 dotnet run --project src/AuthService
 dotnet run --project src/ApiGateway
+```
+
+**CustomerService (ecommerce) only**
+```powershell
+docker compose up -d
+dotnet run --project src/CustomerService
+# Swagger at http://localhost:5002/swagger
 ```
 
 **Full host-run stack**
@@ -146,13 +255,15 @@ npm run dev
 # Runs on http://localhost:5173
 ```
 
-You can log in with the default seeded admin account after the database setup completes:
+You can log in to the ERP staff portal with the default seeded admin account after the database setup completes:
 
 | Username | Password | Role |
 |---|---|---|
 | `admin` | `Admin@123` | Admin |
+| `manager` | `Admin@123` | Manager |
+| `testuser` | `Admin@123` | User |
 
-Additional users can be created via `POST /api/auth/register`. Credentials are stored in `auth.users`.
+For ecommerce customer accounts, register via `POST /api/commerce/auth/register` on CustomerService.
 
 ---
 
@@ -203,7 +314,7 @@ docker compose down
 
 ### Local Development — Docker-local
 
-`ApiGateway` remains exposed on `http://localhost:5000`, and `CustomerService` is exposed directly on `http://localhost:5002` for ecommerce traffic.
+`ApiGateway` is exposed on `http://localhost:5000`, and `CustomerService` is exposed directly on `http://localhost:5002` for ecommerce traffic.
 
 | Service Surface | URL |
 |---|---|
@@ -266,13 +377,13 @@ Runs automatically to catch broken code early:
 **Triggers:** Push to the `dev` branch only
 
 Deploys everything to Azure automatically:
-1. Applies T-SQL database migrations against **Azure SQL** (`insighterp_db`) using `sqlcmd`
+1. Applies T-SQL database migrations against **Azure SQL** (`insighterp_db`) using `sqlcmd` — all schema folders in dependency order
 2. Builds and pushes all 9 Docker images to Azure Container Registry
 3. Logs into Azure using **OIDC** (passwordless — no stored credentials)
 4. Configures ACR credentials on each Container App
 5. Deploys updated images to all 9 Azure Container Apps
-6. Sets shared DB connection-string secrets for AuthService, AdminService, PredictionService, and ProductService
-7. Smoke tests core service `/health` endpoints through the API Gateway
+6. Sets shared DB connection-string secrets for AuthService, AdminService, PredictionService, ProductService, and CustomerService
+7. Smoke tests core service `/health` endpoints through the API Gateway and CustomerService directly
 
 ---
 
@@ -281,7 +392,7 @@ Deploys everything to Azure automatically:
 | Document | Description |
 |---|---|
 | [`whatdone.md`](./whatdone.md) | Full project progress log — everything built so far |
-| [`docs/database/database-guide.md`](./docs/database/database-guide.md) | 🗄️ **Database guide** — architecture, local setup, Azure deployment, how to add schemas, migration rules |
+| [`docs/database/database-guide.md`](./docs/database/database-guide.md) | Database architecture, local setup, Azure deployment, how to add schemas, migration rules |
 | [`docs/micro_archi_structure_guide/micro_archi.md`](./docs/micro_archi_structure_guide/micro_archi.md) | Microservice architecture, ports, and Azure deployment details |
 | [`docs/micro_archi_structure_guide/structure_guide.md`](./docs/micro_archi_structure_guide/structure_guide.md) | AuthService folder/file breakdown |
 | [`src/AdminService/docs/README_ADMIN.md`](./src/AdminService/docs/README_ADMIN.md) | AdminService endpoints, responsibilities, and local verification steps |
