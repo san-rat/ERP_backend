@@ -202,6 +202,24 @@ jobs:
             --resource-group erp-rg \
             --set-env-vars "ConnectionStrings__DefaultConnection=secretref:order-db-conn"
 
+      - name: Configure CustomerService DB connection and service endpoints
+        env:
+          CUSTOMER_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting CustomerService DB connection secret and internal service endpoints..."
+          az containerapp secret set \
+            --name customerservice-dev \
+            --resource-group erp-rg \
+            --secrets "customer-db-conn=$CUSTOMER_DB_CONN"
+
+          az containerapp update \
+            --name customerservice-dev \
+            --resource-group erp-rg \
+            --set-env-vars \
+              "ConnectionStrings__DefaultConnection=secretref:customer-db-conn" \
+              "ServiceEndpoints__ProductService=http://productservice-dev" \
+              "ServiceEndpoints__OrderService=http://orderservice-dev"
+
       - name: Configure ForecastService DB connection string
         env:
           FORECAST_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING_AZURE }}
@@ -233,6 +251,22 @@ jobs:
 
           echo "API_GATEWAY_URL=https://${GATEWAY_FQDN}" >> "$GITHUB_ENV"
 
+      - name: Resolve CustomerService URL
+        shell: bash
+        run: |
+          CUSTOMER_FQDN="$(az containerapp show \
+            --name customerservice-dev \
+            --resource-group erp-rg \
+            --query properties.configuration.ingress.fqdn \
+            -o tsv)"
+
+          if [[ -z "$CUSTOMER_FQDN" ]]; then
+            echo "Failed to resolve CustomerService FQDN."
+            exit 1
+          fi
+
+          echo "CUSTOMER_SERVICE_URL=https://${CUSTOMER_FQDN}" >> "$GITHUB_ENV"
+
       - name: Smoke tests — Service health checks via ApiGateway
         shell: bash
         run: |
@@ -250,6 +284,29 @@ jobs:
           for endpoint in "${ENDPOINTS[@]}"; do
             IFS=':' read -r service path <<< "$endpoint"
             url="${API_GATEWAY_URL}${path}"
+
+            echo ">>> Smoke testing ${service} via ${url}"
+            curl -fsS \
+              --retry 6 \
+              --retry-delay 10 \
+              --retry-all-errors \
+              --connect-timeout 10 \
+              --max-time 30 \
+              "$url"
+            echo
+          done
+
+      - name: Smoke tests — CustomerService direct endpoints
+        shell: bash
+        run: |
+          ENDPOINTS=(
+            "CustomerService Health:/health"
+            "CustomerService Products:/api/commerce/products?pageNumber=1&pageSize=1"
+          )
+
+          for endpoint in "${ENDPOINTS[@]}"; do
+            IFS=':' read -r service path <<< "$endpoint"
+            url="${CUSTOMER_SERVICE_URL}${path}"
 
             echo ">>> Smoke testing ${service} via ${url}"
             curl -fsS \
