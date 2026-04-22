@@ -118,6 +118,11 @@ VITE_CUSTOMER_API_URL=http://localhost:5002  # local ecommerce traffic
 
 In production (Vercel), these are set to the Azure Container Apps public URLs.
 
+For ecommerce production traffic, `customerservice-prod` must also set
+`Cors__FrontendUrl=https://ecommerce-frontend-mu-neon.vercel.app`. The
+checked-in `http://localhost:5173` value in `CustomerService` is only a local
+development fallback.
+
 ### Auth Flow — ERP Staff
 
 ```
