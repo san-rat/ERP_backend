@@ -239,20 +239,21 @@ jobs:
             --resource-group erp-rg-prod \
             --set-env-vars "ConnectionStrings__ChurnDb=secretref:prediction-db-conn"
 
-      - name: Configure AdminService DB connection string
+      - name: Configure AdminService JWT secret and DB connection
         env:
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
           ADMIN_DB_CONN: ${{ secrets.PROD_SQL_CONNECTION_STRING_AZURE }}
         run: |
-          echo ">>> Setting ConnectionStrings__AuthDb on adminservice-prod..."
+          echo ">>> Setting JWT_SECRET and ConnectionStrings__AuthDb on adminservice-prod..."
           az containerapp secret set \
             --name adminservice-prod \
             --resource-group erp-rg-prod \
-            --secrets "auth-db-conn=$ADMIN_DB_CONN"
+            --secrets "jwt-secret=$JWT_SECRET" "auth-db-conn=$ADMIN_DB_CONN"
 
           az containerapp update \
             --name adminservice-prod \
             --resource-group erp-rg-prod \
-            --set-env-vars "ConnectionStrings__AuthDb=secretref:auth-db-conn"
+            --set-env-vars "JWT_SECRET=secretref:jwt-secret" "ConnectionStrings__AuthDb=secretref:auth-db-conn"
 
       - name: Configure ForecastService DB connection string
         env:
@@ -268,6 +269,33 @@ jobs:
             --name forecastservice-prod \
             --resource-group erp-rg-prod \
             --set-env-vars "ConnectionStrings__insighterp_db=secretref:forecast-db-conn"
+
+      - name: Verify JWT env wiring on auth path services
+        shell: bash
+        run: |
+          echo ">>> Verifying JWT_SECRET is wired on all auth path services..."
+          FAILED=0
+          for APP in authservice-prod apigateway-prod adminservice-prod; do
+            echo "Checking ${APP}..."
+            ENV_NAMES=$(az containerapp show \
+              --name "$APP" \
+              --resource-group erp-rg-prod \
+              --query "properties.template.containers[0].env[].name" \
+              -o tsv 2>/dev/null || true)
+
+            if echo "$ENV_NAMES" | grep -qx "JWT_SECRET"; then
+              echo "  ✓ JWT_SECRET is configured on ${APP}"
+            else
+              echo "  ✗ JWT_SECRET is MISSING on ${APP} — failing pipeline"
+              FAILED=1
+            fi
+          done
+
+          if [[ "$FAILED" -eq 1 ]]; then
+            echo "One or more auth path services are missing JWT_SECRET. Fix the workflow and redeploy."
+            exit 1
+          fi
+          echo ">>> JWT env wiring verified on all auth path services."
 
       - name: Resolve ApiGateway URL
         shell: bash
