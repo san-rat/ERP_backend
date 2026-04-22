@@ -219,6 +219,7 @@ jobs:
             --set-env-vars \
               "JwtSettings__SecretKey=secretref:jwt-secret" \
               "ConnectionStrings__DefaultConnection=secretref:customer-db-conn" \
+              "Cors__FrontendUrl=https://ecommerce-frontend-mu-neon.vercel.app" \
               "ServiceEndpoints__ProductService=http://productservice-prod" \
               "ServiceEndpoints__OrderService=http://orderservice-prod" \
               "InternalServiceAuth__HeaderName=X-Internal-Service-Key" \
