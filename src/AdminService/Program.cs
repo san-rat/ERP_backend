@@ -1,4 +1,5 @@
 using System.Text;
+using AdminService;
 using AdminService.Repositories;
 using AdminService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -8,9 +9,11 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
-                ?? builder.Configuration["JwtSettings:SecretKey"]
-                ?? throw new InvalidOperationException("JwtSettings:SecretKey is not configured.");
+// JWT_SECRET env var takes precedence; JwtSettings:SecretKey is a non-Production fallback.
+var (jwtSecret, _) = JwtSecretResolver.Resolve(
+    Environment.GetEnvironmentVariable("JWT_SECRET"),
+    builder.Configuration["JwtSettings:SecretKey"],
+    builder.Environment.IsProduction());
 
 var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "InsightERP";
 var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "InsightERP-Users";

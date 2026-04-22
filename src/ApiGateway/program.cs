@@ -1,3 +1,4 @@
+using ApiGateway;
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
 using Serilog;
@@ -41,9 +42,14 @@ try
     Log.Information("Ocelot Config     → {OcelotConfigFile}", selectedOcelotFile);
 
     // ── JWT settings ──────────────────────────────────────────────────────────
-    var jwtSecret   = Environment.GetEnvironmentVariable("JWT_SECRET")
-                      ?? builder.Configuration["JwtSettings:SecretKey"]
-                      ?? "your-super-secret-key-change-in-production-at-least-32-chars!!";
+    // JWT_SECRET env var takes precedence; JwtSettings:SecretKey is a non-Production fallback.
+    // Placeholder values (${...}), empty values, and missing Production secrets abort startup.
+    var (jwtSecret, jwtSecretSource) = JwtSecretResolver.Resolve(
+        Environment.GetEnvironmentVariable("JWT_SECRET"),
+        builder.Configuration["JwtSettings:SecretKey"],
+        builder.Environment.IsProduction());
+
+    Log.Information("JWT secret source  → {JwtSecretSource}", jwtSecretSource);
 
     var jwtIssuer   = builder.Configuration["JwtSettings:Issuer"]   ?? "InsightERP";
     var jwtAudience = builder.Configuration["JwtSettings:Audience"]  ?? "InsightERP-Users";
