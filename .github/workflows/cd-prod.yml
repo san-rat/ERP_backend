@@ -62,9 +62,9 @@ jobs:
 
       - name: Build and push all images to ACR
         run: |
-          SERVICES=(apigateway analyticsservice authservice customerservice forecastservice orderservice predictionservice productservice)
-          SRC_DIRS=(ApiGateway AnalyticsService AuthService CustomerService ForecastService OrderService PredictionService ProductService)
-          DOCKERFILES=(ApiGateway/dockerfile AnalyticsService/Dockerfile AuthService/Dockerfile CustomerService/Dockerfile ForecastService/Dockerfile OrderService/Dockerfile PredictionService/Dockerfile ProductService/Dockerfile)
+          SERVICES=(apigateway adminservice analyticsservice authservice customerservice forecastservice orderservice predictionservice productservice)
+          SRC_DIRS=(ApiGateway AdminService AnalyticsService AuthService CustomerService ForecastService OrderService PredictionService ProductService)
+          DOCKERFILES=(ApiGateway/dockerfile AdminService/Dockerfile AnalyticsService/Dockerfile AuthService/Dockerfile CustomerService/Dockerfile ForecastService/Dockerfile OrderService/Dockerfile PredictionService/Dockerfile ProductService/Dockerfile)
 
           for i in "${!SERVICES[@]}"; do
             SVC="${SERVICES[$i]}"
@@ -90,8 +90,8 @@ jobs:
 
       - name: Deploy all services to Azure Container Apps
         run: |
-          SERVICES=(apigateway    analyticsservice    authservice    customerservice    forecastservice    orderservice    predictionservice    productservice)
-          APP_NAMES=(apigateway-prod analyticsservice-prod authservice-prod customerservice-prod forecastservice-prod orderservice-prod predictionservice-prod productservice-prod)
+          SERVICES=(apigateway    adminservice    analyticsservice    authservice    customerservice    forecastservice    orderservice    predictionservice    productservice)
+          APP_NAMES=(apigateway-prod adminservice-prod analyticsservice-prod authservice-prod customerservice-prod forecastservice-prod orderservice-prod predictionservice-prod productservice-prod)
 
           for i in "${!SERVICES[@]}"; do
             SVC="${SERVICES[$i]}"
@@ -239,6 +239,36 @@ jobs:
             --resource-group erp-rg-prod \
             --set-env-vars "ConnectionStrings__ChurnDb=secretref:prediction-db-conn"
 
+      - name: Configure AdminService DB connection string
+        env:
+          ADMIN_DB_CONN: ${{ secrets.PROD_SQL_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting ConnectionStrings__AuthDb on adminservice-prod..."
+          az containerapp secret set \
+            --name adminservice-prod \
+            --resource-group erp-rg-prod \
+            --secrets "auth-db-conn=$ADMIN_DB_CONN"
+
+          az containerapp update \
+            --name adminservice-prod \
+            --resource-group erp-rg-prod \
+            --set-env-vars "ConnectionStrings__AuthDb=secretref:auth-db-conn"
+
+      - name: Configure ForecastService DB connection string
+        env:
+          FORECAST_DB_CONN: ${{ secrets.PROD_SQL_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting ConnectionStrings__insighterp_db on forecastservice-prod..."
+          az containerapp secret set \
+            --name forecastservice-prod \
+            --resource-group erp-rg-prod \
+            --secrets "forecast-db-conn=$FORECAST_DB_CONN"
+
+          az containerapp update \
+            --name forecastservice-prod \
+            --resource-group erp-rg-prod \
+            --set-env-vars "ConnectionStrings__insighterp_db=secretref:forecast-db-conn"
+
       - name: Resolve ApiGateway URL
         shell: bash
         run: |
@@ -273,6 +303,9 @@ jobs:
 
           ENDPOINTS=(
             "AuthService:/auth/health"
+            "AdminService:/admin/health"
+            "OrderService:/order/health"
+            "ProductService:/product/health"
             "ForecastService:/forecast/health"
             "PredictionService:/prediction/health"
           )
@@ -289,5 +322,26 @@ jobs:
               --connect-timeout 10 \
               --max-time 90 \
               "$url"
+            echo
+          done
+
+          SWAGGER_ENDPOINTS=(
+            "AdminService:/admin/swagger/v1/swagger.json"
+            "OrderService:/order/swagger/v1/swagger.json"
+            "ProductService:/product/swagger/v1/swagger.json"
+          )
+
+          for endpoint in "${SWAGGER_ENDPOINTS[@]}"; do
+            IFS=':' read -r service path <<< "$endpoint"
+            url="${API_GATEWAY_URL}${path}"
+
+            echo ">>> Smoke testing ${service} swagger via ${url}"
+            curl -fsS \
+              --retry 18 \
+              --retry-delay 10 \
+              --retry-all-errors \
+              --connect-timeout 10 \
+              --max-time 90 \
+              "$url" > /dev/null
             echo
           done

@@ -187,6 +187,36 @@ jobs:
             --resource-group erp-rg \
             --set-env-vars "ConnectionStrings__DefaultConnection=secretref:product-db-conn"
 
+      - name: Configure OrderService DB connection string
+        env:
+          ORDER_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting ConnectionStrings__DefaultConnection secret on orderservice-dev..."
+          az containerapp secret set \
+            --name orderservice-dev \
+            --resource-group erp-rg \
+            --secrets "order-db-conn=$ORDER_DB_CONN"
+
+          az containerapp update \
+            --name orderservice-dev \
+            --resource-group erp-rg \
+            --set-env-vars "ConnectionStrings__DefaultConnection=secretref:order-db-conn"
+
+      - name: Configure ForecastService DB connection string
+        env:
+          FORECAST_DB_CONN: ${{ secrets.AUTH_DB_CONNECTION_STRING_AZURE }}
+        run: |
+          echo ">>> Setting ConnectionStrings__insighterp_db secret on forecastservice-dev..."
+          az containerapp secret set \
+            --name forecastservice-dev \
+            --resource-group erp-rg \
+            --secrets "forecast-db-conn=$FORECAST_DB_CONN"
+
+          az containerapp update \
+            --name forecastservice-dev \
+            --resource-group erp-rg \
+            --set-env-vars "ConnectionStrings__insighterp_db=secretref:forecast-db-conn"
+
       - name: Resolve ApiGateway URL
         shell: bash
         run: |
