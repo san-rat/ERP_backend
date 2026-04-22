@@ -126,15 +126,12 @@ var app = builder.Build();
 // Global error handler
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("v1/swagger.json", "InsightERP OrderService API v1");
-        options.RoutePrefix = "swagger";
-    });
-}
+    options.SwaggerEndpoint("v1/swagger.json", "InsightERP OrderService API v1");
+    options.RoutePrefix = "swagger";
+});
 
 if (!isRunningInContainer)
 {
