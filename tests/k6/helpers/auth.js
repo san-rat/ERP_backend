@@ -12,18 +12,18 @@ import http from 'k6/http';
  * raw Bearer token string.
  *
  * @param {string} [baseUrl='http://localhost:5000'] - API Gateway base URL.
- * @param {string} [email='admin@insighterp.com']    - Test account email.
- * @param {string} [password='Admin@1234']           - Test account password.
+ * @param {string} [username='admin']                - Test account email.
+ * @param {string} [password='Admin@123']           - Test account password.
  * @returns {string} JWT access token.
  */
 export function getAuthToken(
-  baseUrl  = 'http://localhost:5000',
-  email    = 'admin@insighterp.com',
-  password = 'Admin@1234'
+  baseUrl = 'http://localhost:5000',
+  username = 'employee',
+  password = 'Employee@123'
 ) {
   const res = http.post(
     `${baseUrl}/api/auth/login`,
-    JSON.stringify({ email, password }),
+    JSON.stringify({ username, password }),
     { headers: { 'Content-Type': 'application/json' } }
   );
 

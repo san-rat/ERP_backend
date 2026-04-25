@@ -3,16 +3,17 @@
 // SE3112 — Load/Performance Testing | Student 3
 // Feature : Spike Testing Configuration
 //
-// Purpose : Simulate a sudden, near-instant surge of traffic (e.g. a flash
-//           sale or a DDoS burst) and then immediately drop back. Unlike
-//           stress testing (which ramps gradually), spike testing measures:
-//             • How gracefully the system handles instant overload
-//             • How quickly it RECOVERS after the load disappears
-//             • Whether it returns 503 (overloaded) vs 500 (crashed)
+// Purpose : Simulate a sudden, near-instant surge of employees logging in
+//           at the same time (e.g. start of a work shift where all staff
+//           log in within seconds of each other). Unlike stress testing
+//           (which ramps gradually), spike testing measures:
+//             • How gracefully the AuthService handles an instant login flood
+//             • Whether JWT tokens are still issued correctly under burst load
+//             • How quickly the system RECOVERS after the surge drops
+//             • Whether it returns 503 (overloaded) vs 500 (crashed/broken)
 //
-// Endpoints tested (via API Gateway :5000):
-//   GET  /api/products         — primary spike target (high read load)
-//   GET  /api/products/stock   — secondary target (inventory queries)
+// Endpoint tested (via API Gateway :5000):
+//   POST /api/auth/login  — Employee login under instant spike load
 //
 // Run command:
 //   k6 run tests/k6/spike_test.js
@@ -21,128 +22,126 @@
 import http              from 'k6/http';
 import { check, sleep }  from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
-import { getAuthToken }  from './helpers/auth.js';
 
 // ─── Custom Metrics ───────────────────────────────────────────────────────────
 
-/** Response duration for every request in the spike scenario. */
-const spikeDuration = new Trend('spike_response_duration_ms', true);
+/** Response duration for every login attempt in the spike scenario. */
+const loginSpikeDuration = new Trend('login_spike_duration_ms', true);
 
 /** Fraction of failed checks during the spike window. */
 const spikeErrorRate = new Rate('spike_error_rate');
 
 /**
- * Counter: increments every time a 200 OK is returned.
- * Used to observe the RECOVERY phase — rising count after the spike drops
- * means the system has recovered.
+ * Counter: increments every time a login returns HTTP 200 with a valid token.
+ * During the spike, this count will plateau (system overwhelmed).
+ * After the drop, it will rise again — this rising count shows RECOVERY.
  */
-const recoveredRequests = new Counter('successful_requests_after_spike');
+const successfulLogins = new Counter('successful_logins_after_spike');
 
 // ─── Spike Test Stages (Load Shape) ──────────────────────────────────────────
 //
-// Stage 1 — Baseline     :  5 VUs for 15 s   (calm, normal traffic)
-// Stage 2 — SPIKE        :  5 → 200 VUs in 5s (instant massive surge)
-// Stage 3 — Hold Spike   : 200 VUs for 30 s  (system under extreme load)
-// Stage 4 — Drop         : 200 →  5 VUs in 5s (load disappears suddenly)
-// Stage 5 — Recovery     :  5 VUs for 30 s   (observe system returning to normal)
-// Stage 6 — Wind Down    :  5 →  0 VUs in 10s
+// Stage 1 — Baseline     :   5 VUs for  5 s   (calm — a few employees logging in)
+// Stage 2 — SPIKE        :   5 → 200 VUs in 3s (instant surge — shift start)
+// Stage 3 — Hold Spike   : 200 VUs for 15 s   (system under extreme login load)
+// Stage 4 — Drop         : 200 →   5 VUs in 3s (surge ends — most employees in)
+// Stage 5 — Recovery     :   5 VUs for 10 s   (observe system returning to normal)
+// Stage 6 — Wind Down    :   5 →   0 VUs in  4s  — total: ~40 s
 //
 export const options = {
   stages: [
-    { duration: '15s', target: 5   },  // Baseline calm traffic
-    { duration: '5s',  target: 200 },  // <<< THE SPIKE — instant surge
-    { duration: '30s', target: 200 },  // Hold the spike
-    { duration: '5s',  target: 5   },  // <<< DROP — load disappears
-    { duration: '30s', target: 5   },  // Recovery observation window
-    { duration: '10s', target: 0   },  // Wind down
+    { duration: '5s',  target: 5   },  // Baseline — calm login traffic
+    { duration: '3s',  target: 200 },  // <<< THE SPIKE — all employees login at once
+    { duration: '15s', target: 200 },  // Hold the spike
+    { duration: '3s',  target: 5   },  // <<< DROP — surge ends
+    { duration: '10s', target: 5   },  // Recovery observation window
+    { duration: '4s',  target: 0   },  // Wind down — total: ~40 s
   ],
 
   // ── Thresholds ──────────────────────────────────────────────────────────
   // Thresholds for spike are more lenient than stress — spikes WILL cause
-  // degradation; the key question is whether the system survives gracefully.
+  // degradation. The key question is: does the system survive without crashing?
   thresholds: {
-    // 95% of requests should respond within 3 seconds (even during spike)
-    'http_req_duration':          ['p(95)<3000'],
-    // The absolute worst-case (p99) should not exceed 5 seconds
-    'spike_response_duration_ms': ['p(99)<5000'],
-    // Spike error rate can go up to 20% during the burst — it is expected
-    'spike_error_rate':           ['rate<0.20'],
-    // The system should NOT completely fail (hard limit: no more than 30% raw HTTP failures)
-    'http_req_failed':            ['rate<0.30'],
+    // 95% of login requests must respond within 3 seconds even during spike
+    'http_req_duration':       ['p(95)<3000'],
+    // The absolute worst-case (p99) must not exceed 5 seconds
+    'login_spike_duration_ms': ['p(99)<5000'],
+    // Spike error rate can reach up to 20% during the burst — it is expected
+    'spike_error_rate':        ['rate<0.20'],
+    // Hard limit: no more than 30% raw HTTP failures (system must not fully crash)
+    'http_req_failed':         ['rate<0.30'],
   },
 };
 
 // ─── Setup — runs ONCE before any VU starts ───────────────────────────────────
+// Validates the login endpoint is reachable before launching the spike.
 export function setup() {
-  const token = getAuthToken();
+  const res = http.post(
+    'http://localhost:5000/api/auth/login',
+    JSON.stringify({ Username: 'employee', Password: 'Employee@123' }),
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+
+  if (res.status !== 200) {
+    throw new Error(
+      `[spike] Pre-flight login check failed — HTTP ${res.status}. ` +
+      'Ensure the AuthService is running before starting the spike test.'
+    );
+  }
+
   console.log('[spike] Setup complete — starting spike scenario.');
-  return { token };
 }
 
 // ─── Teardown ─────────────────────────────────────────────────────────────────
-export function teardown(data) {
+export function teardown() {
   console.log(
-    '[spike] Test complete. Check spike_error_rate and successful_requests_after_spike ' +
+    '[spike] Test complete. Check spike_error_rate and successful_logins_after_spike ' +
     'in the summary to assess recovery behaviour.'
   );
 }
 
 // ─── Virtual User Scenario ────────────────────────────────────────────────────
-export default function (data) {
+// Each VU continuously calls POST /api/auth/login with employee credentials.
+// During the spike, 200 VUs will be doing this simultaneously —
+// simulating all employees logging in the moment their shift begins.
+export default function () {
   const BASE = 'http://localhost:5000';
-  const headers = {
-    Authorization: `Bearer ${data.token}`,
-    'Content-Type': 'application/json',
-  };
 
-  // ── Primary Spike Target: GET /api/products ────────────────────────────
-  // This is the most queried endpoint in the ERP system.
-  // Under spike conditions it will be hit by 200 concurrent VUs.
-  const productRes = http.get(
-    `${BASE}/api/products?pageNumber=1&pageSize=20`,
-    { headers, tags: { name: 'SPIKE_products' } }
+  // ── POST /api/auth/login (employee credentials) ────────────────────────
+  const loginRes = http.post(
+    `${BASE}/api/auth/login`,
+    JSON.stringify({ Username: 'employee', Password: 'Employee@123' }),
+    {
+      headers: { 'Content-Type': 'application/json' },
+      tags:    { name: 'SPIKE_login' },
+    }
   );
 
-  spikeDuration.add(productRes.timings.duration);
+  loginSpikeDuration.add(loginRes.timings.duration);
 
-  const productOk = check(productRes, {
-    // 200 = healthy, 503 = graceful overload — both acceptable during spike
-    // 500 = server crash — NEVER acceptable
-    'products — 200 or 503 (no crash)':   (r) => r.status === 200 || r.status === 503,
-    'products — not a 500 (server error)': (r) => r.status !== 500,
-    'products — responded within 5s':      (r) => r.timings.duration < 5000,
+  const loginOk = check(loginRes, {
+    // 200 = login succeeded, 503 = server overloaded but alive — both acceptable
+    // 500 = server crashed internally — NEVER acceptable
+    'login — 200 or 503 (no crash)':    (r) => r.status === 200 || r.status === 503,
+    'login — not a 500 (server error)': (r) => r.status !== 500,
+    'login — responded within 5s':      (r) => r.timings.duration < 5000,
   });
 
-  spikeErrorRate.add(!productOk);
+  spikeErrorRate.add(!loginOk);
 
-  // Only count as a "recovered" request if we got a full 200 OK.
-  // During the spike, this count will plateau; after the drop, it will rise —
-  // which is the recovery curve you explain in the demo.
-  if (productRes.status === 200) {
-    recoveredRequests.add(1);
+  // Only count as a successful login if we received a full HTTP 200 with a token.
+  // During the spike, this plateaus as the server struggles.
+  // After the drop, the rising count shows the system has recovered.
+  if (loginRes.status === 200) {
+    try {
+      const body = JSON.parse(loginRes.body);
+      if (body.token) {
+        successfulLogins.add(1);
+      }
+    } catch {
+      // body was not valid JSON — count it as a non-recovery
+    }
   }
 
-  sleep(0.5); // Shorter sleep = more aggressive — intentional for spike testing
-
-  // ── Secondary Target: GET /api/products/stock ──────────────────────────
-  const stockRes = http.get(
-    `${BASE}/api/products/stock`,
-    { headers, tags: { name: 'SPIKE_stock' } }
-  );
-
-  spikeDuration.add(stockRes.timings.duration);
-
-  const stockOk = check(stockRes, {
-    'stock — 200 or 503 (no crash)':    (r) => r.status === 200 || r.status === 503,
-    'stock — not a 500 (server error)': (r) => r.status !== 500,
-    'stock — responded within 5s':      (r) => r.timings.duration < 5000,
-  });
-
-  spikeErrorRate.add(!stockOk);
-
-  if (stockRes.status === 200) {
-    recoveredRequests.add(1);
-  }
-
+  // Shorter sleep = more aggressive concurrent load — intentional for spike
   sleep(0.5);
 }
