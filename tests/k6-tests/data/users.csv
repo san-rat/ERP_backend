@@ -1,0 +1,11 @@
+username,password,expected_status,scenario
+admin,Admin@123,200,valid_admin_login
+manager,Manager@123,200,valid_manager_login
+employee,Employee@123,200,valid_employee_login
+wronguser,WrongPass!99,401,invalid_username
+admin,incorrectpassword,401,wrong_password_for_admin
+fakeuser123,fakepass456,401,completely_fake_credentials
+emptyuser,Admin@123,401,nonexistent_user
+admin,short,401,wrong_short_password
+randomuser99,randompass99,401,random_fake_user
+ADMIN,Admin@123,401,uppercase_username_case_sensitive

@@ -1,0 +1,6 @@
+username,email,password,role,expected_status,scenario
+,missing@erp.com,Pass@123,Employee,400,missing_username_field
+baduser,bad@erp.com,,Employee,400,missing_password_field
+roletest,role@erp.com,Role@123,Admin,400,invalid_self_assign_admin_role
+faketest,notanemail,Pass@123,Employee,400,invalid_email_format
+,,,Employee,400,all_fields_empty
